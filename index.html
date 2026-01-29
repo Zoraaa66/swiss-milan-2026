@@ -44,7 +44,6 @@
             };
             initAuth();
         } else {
-            // 如果沒有 Config (例如在 Netlify 上)，發送錯誤事件讓程式直接跑預設資料
             setTimeout(() => window.dispatchEvent(new CustomEvent('firebase-error')), 500);
         }
     </script>
@@ -62,139 +61,124 @@
             color: #3D3D3D; 
             font-family: 'Noto Sans TC', sans-serif; 
             -webkit-font-smoothing: antialiased; 
-            font-size: 18px; 
+            font-size: 16px; /* 調回標準大小 */
         }
         .serif { font-family: 'Noto Serif TC', serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         .card { 
             background: white; 
-            border-radius: 35px; 
+            border-radius: 24px; 
             width: 100%; 
-            margin-bottom: 15px; 
+            margin-bottom: 12px; 
             overflow: hidden; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.04); 
-            border: 1px solid rgba(230, 225, 218, 0.7); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+            border: 1px solid rgba(230, 225, 218, 0.6); 
         }
         
-        .transport-card { background: #F8FAFC; border: 2px dashed var(--accent-transport); }
-        .spot-card { border-bottom: 7px solid var(--accent-spot); }
-        .hotel-card { border-left: 12px solid var(--accent-hotel); }
+        .transport-card { background: #F8FAFC; border: 1.5px dashed var(--accent-transport); }
+        .spot-card { border-bottom: 5px solid var(--accent-spot); }
+        .hotel-card { border-left: 8px solid var(--accent-hotel); }
         
         .arrow-divider { 
             display: flex; justify-content: center; align-items: center; 
-            height: 65px; color: #E2E8F0; font-size: 2.2rem; 
+            height: 40px; color: #E2E8F0; font-size: 1.5rem; 
         }
         
-        .day-btn { flex: 0 0 auto; width: 90px; height: 115px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 30px; transition: all 0.3s; background: transparent; }
-        .day-btn.active { background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.12); color: var(--accent-transport); transform: translateY(-5px); border: 1px solid #E2E8F0; }
+        .day-btn { flex: 0 0 auto; width: 70px; height: 95px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; transition: all 0.3s; background: transparent; }
+        .day-btn.active { background: white; box-shadow: 0 6px 15px rgba(0,0,0,0.08); color: var(--accent-transport); transform: translateY(-3px); border: 1px solid #E2E8F0; }
         
-        .step-list-item { position: relative; padding-left: 45px; border-left: 4px solid #CBD5E1; margin-left: 15px; margin-bottom: 25px; }
-        .step-list-item::before { content: ''; position: absolute; left: -10px; top: 12px; width: 16px; height: 16px; background: var(--accent-transport); border-radius: 50%; }
+        .step-list-item { position: relative; padding-left: 32px; border-left: 2px solid #CBD5E1; margin-left: 10px; margin-bottom: 16px; }
+        .step-list-item::before { content: ''; position: absolute; left: -6px; top: 8px; width: 10px; height: 10px; background: var(--accent-transport); border-radius: 50%; }
         
-        input, textarea { background: #F9F9F9; border: 2px solid #E5E7EB; border-radius: 18px; padding: 15px; width: 100%; margin-top: 10px; font-size: 19px; }
+        input, textarea { background: #F9F9F9; border: 1px solid #E5E7EB; border-radius: 12px; padding: 10px; width: 100%; margin-top: 8px; font-size: 15px; }
         
-        .text-detail { font-size: 20px; line-height: 1.8; }
-        .text-title { font-size: 28px; font-weight: 700; }
-        .nav-link-btn { color: var(--accent-transport); font-size: 1.1rem; font-weight: 700; background: #EFF6FF; padding: 8px 16px; border-radius: 15px; }
+        /* 內文字體微調，避免過大 */
+        .text-detail { font-size: 15px; line-height: 1.6; }
+        .text-title { font-size: 22px; font-weight: 700; }
+        .nav-link-btn { color: var(--accent-transport); font-size: 0.9rem; font-weight: 700; background: #EFF6FF; padding: 4px 12px; border-radius: 10px; }
     </style>
 </head>
-<body class="max-w-md mx-auto min-h-screen pb-32">
+<body class="max-w-md mx-auto min-h-screen pb-24">
 
-    <header class="sticky top-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md pt-10 pb-6 shadow-sm">
-        <div class="px-6 mb-6 flex justify-between items-end">
+    <header class="sticky top-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md pt-8 pb-4 shadow-sm">
+        <div class="px-5 mb-5 flex justify-between items-end">
             <div>
-                <h1 class="text-4xl font-extralight tracking-widest serif italic text-slate-700">The Archive.</h1>
-                <p class="text-[14px] uppercase tracking-[0.4em] text-slate-400 mt-2 font-bold italic">2026 Swiss Journey</p>
+                <h1 class="text-3xl font-extralight tracking-widest serif italic text-slate-700">The Archive.</h1>
+                <p class="text-[12px] uppercase tracking-[0.3em] text-slate-400 mt-1 font-bold">2026 Swiss Journey</p>
             </div>
-            <button id="edit-toggle" class="bg-slate-100 p-3 rounded-full text-slate-400 hover:text-emerald-500 transition shadow-sm">
-                <i class="fas fa-edit text-2xl"></i>
+            <button id="edit-toggle" class="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-emerald-500 transition">
+                <i class="fas fa-edit text-lg"></i>
             </button>
         </div>
-        <div class="flex overflow-x-auto no-scrollbar gap-4 px-6 pb-2" id="date-navbar"></div>
+        <div class="flex overflow-x-auto no-scrollbar gap-3 px-5 pb-2" id="date-navbar"></div>
     </header>
 
-    <main class="px-6 mt-8" id="itinerary-content">
-        <div class="flex flex-col justify-center items-center py-40 text-slate-300">
-            <i class="fas fa-circle-notch animate-spin text-5xl mb-6"></i>
-            <p class="text-xl">同步雲端行程中...</p>
+    <main class="px-5 mt-6" id="itinerary-content">
+        <div class="flex flex-col justify-center items-center py-32 text-slate-300">
+            <i class="fas fa-circle-notch animate-spin text-3xl mb-4"></i>
+            <p>正在載入您的行程...</p>
         </div>
     </main>
 
     <!-- Save Button -->
-    <button id="save-btn" class="hidden fixed bottom-12 right-8 bg-emerald-500 text-white w-20 h-20 rounded-full shadow-2xl z-[100] flex items-center justify-center text-3xl">
+    <button id="save-btn" class="hidden fixed bottom-8 right-6 bg-emerald-500 text-white w-14 h-14 rounded-full shadow-2xl z-[100] flex items-center justify-center text-2xl">
         <i class="fas fa-cloud-upload-alt"></i>
     </button>
 
     <script type="module">
         import { doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 核心數據：已補齊 13 天
         const defaultTripData = {
             days: [
-                { day: 1, date: "3/18", weekday: "WED", title: "蘇黎世入境 ➔ 因特拉肯", cards: [
-                    { type: "hotel", name: "出發：台灣機場", desc: "00:20 出發 EK0387。檢查護照與 Swiss Pass。", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563" },
-                    { type: "transport", name: "入境與移動路程", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95", steps: [
-                        {mode: "飛機", route: "12:25 抵達蘇黎世機場 (ZRH)", time: "12hr+"},
-                        {mode: "火車", route: "機場 ➔ 伯恩/盧塞恩 ➔ 因特拉肯東站", time: "2hr"}
-                    ], detail: "建議搭乘黃金列車景觀段。火車免預約。" },
-                    { type: "hotel", name: "住：因特拉肯飯店", desc: "首晚入住。晚上小鎮散步。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                { day: 1, date: "3/18", weekday: "WED", title: "入境蘇黎世 ➔ 因特拉肯", cards: [
+                    { type: "hotel", name: "出發：台灣機場", desc: "00:20 EK0387。開啟之旅！", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "入境與移動", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95?auto=format&fit=crop&q=80", steps: [
+                        {mode: "飛機", route: "12:25 抵達蘇黎世 (ZRH)", time: "12hr+"},
+                        {mode: "火車", route: "機場 ➔ 因特拉肯", time: "2hr"}
+                    ], detail: "建議搭乘景觀段欣賞湖景。持有 Swiss Pass 即可。" },
+                    { type: "spot", name: "因特拉肯東站", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80", desc: "入飯店放行李。晚上草地看滑翔傘。" },
+                    { type: "hotel", name: "住：因特拉肯飯店", desc: "連住 5 晚的第一晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 2, date: "3/19", weekday: "THU", title: "少女峰：歐洲之巔全覽", cards: [
-                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "準備好高海拔保暖衣物。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
-                    { type: "transport", name: "少女峰登山路線", img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c", steps: [
-                        {mode: "火車 R61", route: "東站 ➔ 格林德瓦轉運站", time: "35m"},
-                        {mode: "快線纜車", route: "Eiger Express 艾格快線", time: "15m"},
+                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "準備保暖衣物。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "少女峰登山路線", img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c?auto=format&fit=crop&q=80", steps: [
+                        {mode: "火車 R61", route: "東站 ➔ 轉運站", time: "35m"},
+                        {mode: "快線纜車", route: "Eiger Express", time: "15m"},
                         {mode: "齒軌火車", route: "艾格冰河 ➔ 少女峰站", time: "25m"}
-                    ], detail: "11:00-14:00 拍攝熱點：阿萊奇冰川、冰原平台。" },
-                    { type: "spot", name: "斯芬克斯觀景台 / 阿萊奇冰川", img: "https://images.unsplash.com/photo-1541410965313-d53b3c16ef17", desc: "拍攝最經典的阿萊奇冰川與瑞士國旗。" },
-                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "享受寧靜夜晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                    ], detail: "11:00-14:00 拍攝點：阿萊奇冰川、冰原平台。" },
+                    { type: "spot", name: "斯芬克斯觀景台", img: "https://images.unsplash.com/photo-1541410965313-d53b3c16ef17?auto=format&fit=crop&q=80", desc: "拍攝最經典的阿萊奇冰川與國旗同框。" },
+                    { type: "transport", name: "返回路段", img: "https://images.unsplash.com/photo-1549221195-23671f544521?auto=format&fit=crop&q=80", steps: [
+                        {mode: "火車 (回程)", route: "少女峰 ➔ 因特拉肯", time: "90m"}
+                    ], detail: "原路返回，避免高山疲勞。" },
+                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "晚餐後享受寧靜夜晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
-                { day: 3, date: "3/20", weekday: "FRI", title: "First 山 ➔ 盧達本納", cards: [
-                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "今日步行為主。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
-                    { type: "transport", name: "前往 First 山頂", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48", steps: [
+                { day: 3, date: "3/20", weekday: "FRI", title: "First 倒影 ➔ 盧達本納", cards: [
+                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "今日步行為主。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "前往 First 山頂", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80", steps: [
                         {mode: "火車", route: "Interlaken ➔ Grindelwald", time: "35m"},
                         {mode: "纜車", route: "Grindelwald ➔ First", time: "25m"}
-                    ], detail: "健行至巴哈阿爾普湖 (Bachalpsee) 拍倒影。" },
-                    { type: "spot", name: "巴哈阿爾普湖 Bachalpsee", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b", desc: "雪山倒影最著名的地點。健行單程約 40 分鐘。" },
-                    { type: "spot", name: "盧達本納瀑布谷", img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4", desc: "15:30-17:30 拍瀑布逆光，施陶巴赫瀑布。" },
-                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "連住第 3 晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                    ], detail: "健行至巴哈阿爾普湖拍倒影。" },
+                    { type: "spot", name: "巴哈阿爾普湖 Bachalpsee", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80", desc: "捕捉雪山倒影（優先搶無風時段）。" },
+                    { type: "spot", name: "盧達本納 Lauterbrunnen", img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&q=80", desc: "15:30-17:30 拍瀑布逆光。" },
+                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "休息。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
-                { day: 4, date: "3/21", weekday: "SAT", title: "米倫 ➔ 雪朗峰", cards: [
-                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "08:30 前出發看天氣。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
-                    { type: "transport", name: "纜車鐵路路程", img: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1", steps: [
-                        {mode: "火車", route: "Interlaken ➔ Lauterbrunnen", time: "20m"},
-                        {mode: "纜車", route: "Lauterbrunnen ➔ 米倫 (Murren)", time: "25m"}
-                    ], detail: "米倫是無車小鎮，非常靜謐。" },
-                    { type: "spot", name: "雪朗峰頂 Schilthorn", img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c", desc: "360 度觀景台，看艾格峰、僧侶峰、少女峰三峰並列。" },
-                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "提早回程休息。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
-                ]},
-                { day: 5, date: "3/22", weekday: "SUN", title: "施皮茨 ➔ 森林藍湖", cards: [
-                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "週日悠閒節奏。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
-                    { type: "spot", name: "施皮茨城堡 Spiez", img: "https://images.unsplash.com/photo-1590494165264-1ebe3602eb80", desc: "10:00-12:00 拍攝城堡與圖恩湖雪山倒影。" },
-                    { type: "transport", name: "前往藍湖路程", img: "https://images.unsplash.com/photo-1627662056263-d73197607a7f", steps: [
-                        {mode: "火車+公車", route: "Spiez ➔ Frutigen ➔ Blausee", time: "40m"}
-                    ], detail: "藍湖水質清澈，呈翠藍色。" },
-                    { type: "spot", name: "藍湖 Blausee", img: "https://images.unsplash.com/photo-1627662056263-d73197607a7f", desc: "瑞士最美湖泊之一。享受森林氣息。" },
-                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "最後一晚在因特拉肯。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
-                ]},
-                { day: 6, date: "3/23", weekday: "MON", title: "移防米蘭：跨國移動", cards: [
-                    { type: "hotel", name: "退房：因特拉肯飯店", desc: "前往米蘭中央車站。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
-                    { type: "transport", name: "跨國快車路段", img: "https://images.unsplash.com/photo-1528150177508-7cc0c36cda5c", steps: [
+                { day: 6, date: "3/23", weekday: "MON", title: "移動：米蘭跨國日", cards: [
+                    { type: "hotel", name: "退房：因特拉肯飯店", desc: "前往米蘭中央車站。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "跨國路程", img: "https://images.unsplash.com/photo-1528150177508-7cc0c36cda5c?auto=format&fit=crop&q=80", steps: [
                         {mode: "火車", route: "Interlaken ➔ Spiez", time: "20m"},
                         {mode: "火車 (EC)", route: "Spiez ➔ Milano Centrale", time: "3.5h"}
-                    ], detail: "需提前劃位 EuroCity。下午市區自由活動。" },
-                    { type: "hotel", name: "住：米蘭飯店", desc: "中央車站附近，連住 2 晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                    ], detail: "EC 必須劃位，建議訂好。" },
+                    { type: "hotel", name: "住：米蘭飯店", desc: "連住 2 晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 10, date: "3/27", weekday: "FRI", title: "Gornergrat ➔ 倒影湖", cards: [
-                    { type: "hotel", name: "起點：策馬特飯店", desc: "經典馬特洪峰日。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" },
-                    { type: "transport", name: "齒軌火車路線", img: "https://images.unsplash.com/photo-1538330621152-478f3d057e90", steps: [
+                    { type: "hotel", name: "起點：策馬特飯店", desc: "全日馬特洪峰風景。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "登山火車", img: "https://images.unsplash.com/photo-1538330621152-478f3d057e90?auto=format&fit=crop&q=80", steps: [
                         {mode: "火車 (GGB)", route: "Zermatt ➔ Gornergrat", time: "35m"}
                     ], detail: "上山坐右側看山景最美。" },
-                    { type: "spot", name: "Riffelsee 倒影湖", img: "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f", desc: "Rotenboden 站下車走 10 分鐘即達。" },
-                    { type: "hotel", name: "住：策馬特飯店", desc: "策馬特連住第 3 晚。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" }
+                    { type: "spot", name: "Riffelsee 倒影湖", img: "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?auto=format&fit=crop&q=80", desc: "經典湖面馬特洪峰。" },
+                    { type: "hotel", name: "住：策馬特飯店", desc: "享受寧靜。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" }
                 ]}
-                // 其他天數可在手機上編輯增加
             ]
         };
 
@@ -204,80 +188,84 @@
 
         const getTransportIcon = (mode) => {
             const m = mode.toLowerCase();
-            if (m.includes('火車') || m.includes('train')) return '<i class="fas fa-train mr-4 text-blue-500 text-2xl"></i>';
-            if (m.includes('纜車') || m.includes('cable') || m.includes('快線')) return '<i class="fas fa-cable-car mr-4 text-purple-500 text-2xl"></i>';
-            if (m.includes('步行') || m.includes('走')) return '<i class="fas fa-walking mr-4 text-emerald-500 text-2xl"></i>';
-            if (m.includes('飛機') || m.includes('落地')) return '<i class="fas fa-plane mr-4 text-slate-400 text-2xl"></i>';
-            if (m.includes('地鐵')) return '<i class="fas fa-subway mr-4 text-red-500 text-2xl"></i>';
-            return '<i class="fas fa-chevron-right mr-4 text-slate-300 text-2xl"></i>';
+            if (m.includes('火車') || m.includes('train') || m.includes('ggb')) return '<i class="fas fa-train mr-3 text-blue-500"></i>';
+            if (m.includes('纜車') || m.includes('cable') || m.includes('快線')) return '<i class="fas fa-cable-car mr-3 text-purple-500"></i>';
+            if (m.includes('步行') || m.includes('走') || m.includes('健行')) return '<i class="fas fa-walking mr-3 text-emerald-500"></i>';
+            if (m.includes('飛機') || m.includes('落地')) return '<i class="fas fa-plane mr-3 text-slate-400"></i>';
+            if (m.includes('地鐵')) return '<i class="fas fa-subway mr-3 text-red-500"></i>';
+            return '<i class="fas fa-chevron-right mr-3 text-slate-300"></i>';
         };
 
+        // 渲染導覽列
         const renderNavBar = () => {
             const navbar = document.getElementById('date-navbar');
             navbar.innerHTML = '';
             localData.days.sort((a,b) => a.day - b.day).forEach(item => {
                 const btn = document.createElement('button');
                 btn.className = `day-btn ${item.day === currentDay ? 'active' : ''}`;
-                btn.onclick = () => { currentDay = item.day; renderContent(); window.scrollTo(0,0); };
-                btn.innerHTML = `<span class="text-[14px] font-black text-slate-400 opacity-60 uppercase">Day</span>
-                                 <span class="text-4xl font-serif italic leading-none my-1">${item.day}</span>
-                                 <span class="text-[16px] font-bold opacity-80">${item.date}</span>`;
+                // 點擊後同時更新 currentDay 並重繪導覽列
+                btn.onclick = () => { 
+                    currentDay = item.day; 
+                    renderNavBar(); 
+                    renderContent(); 
+                    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+                };
+                btn.innerHTML = `<span class="text-[12px] font-black text-slate-400 opacity-60 uppercase">Day</span>
+                                 <span class="text-3xl font-serif italic leading-none my-1">${item.day}</span>
+                                 <span class="text-[13px] font-bold opacity-80">${item.date}</span>`;
                 navbar.appendChild(btn);
             });
         };
 
+        // 渲染內容
         const renderContent = () => {
             const data = localData.days.find(d => d.day === currentDay);
             const container = document.getElementById('itinerary-content');
             if(!data) {
-                container.innerHTML = `<p class="py-20 text-center text-slate-400">目前此日期尚無詳細內容，請點擊編輯新增。</p>`;
+                container.innerHTML = `<p class="py-20 text-center text-slate-400 text-sm">目前此日期尚無詳細內容。</p>`;
                 return;
             }
 
             let html = `
-                <div class="mb-12 fade-in">
-                    <p class="text-[18px] font-black text-slate-400 tracking-widest uppercase mb-1 italic">March ${data.date} (${data.weekday})</p>
-                    ${isEditMode ? `<input type="text" value="${data.title}" id="day-title-input" class="text-3xl font-serif italic text-slate-700">` : `<h2 class="text-5xl font-serif italic text-slate-700 leading-tight">${data.title}</h2>`}
+                <div class="mb-8 fade-in">
+                    <p class="text-[14px] font-black text-slate-400 tracking-widest uppercase mb-1 italic">March ${data.date} (${data.weekday})</p>
+                    ${isEditMode ? `<input type="text" value="${data.title}" id="day-title-input" class="text-2xl font-serif italic text-slate-700">` : `<h2 class="text-3xl font-serif italic text-slate-700 leading-tight">${data.title}</h2>`}
                 </div>
             `;
 
             data.cards.forEach((card, idx) => {
-                if (idx > 0) html += `<div class="arrow-divider"><i class="fas fa-chevron-down animate-bounce duration-[4000ms] text-slate-200"></i></div>`;
+                if (idx > 0) html += `<div class="arrow-divider"><i class="fas fa-chevron-down text-slate-200"></i></div>`;
                 
                 if (card.type === 'hotel') {
                     html += `
-                        <div class="card hotel-card shadow-lg p-10">
-                            ${isEditMode ? `<input placeholder="圖片連結" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-56 bg-slate-100 bg-cover bg-center rounded-3xl mb-6 shadow-inner" style="background-image: url('${card.img}')"></div>`}
-                            <div class="flex items-center gap-4 mb-4"><i class="fas fa-house-chimney text-orange-400 text-2xl"></i><span class="text-[16px] font-black text-slate-400 uppercase tracking-widest">Base / Lodge</span></div>
+                        <div class="card hotel-card shadow-lg p-6">
+                            ${isEditMode ? `<input placeholder="圖片連結" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-40 bg-slate-100 bg-cover bg-center rounded-2xl mb-4" style="background-image: url('${card.img}')"></div>`}
+                            <div class="flex items-center gap-3 mb-3 text-xs font-black text-slate-400 uppercase tracking-widest"><i class="fas fa-house-chimney text-orange-400"></i>Base / Lodge</div>
                             ${isEditMode ? `<input value="${card.name}" onchange="updateCardField(${idx}, 'name', this.value)">` : `<h3 class="text-title text-slate-700 font-bold">${card.name}</h3>`}
-                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'desc', this.value)">${card.desc}</textarea>` : `<p class="text-detail text-slate-400 mt-4 italic font-medium">${card.desc}</p>`}
+                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'desc', this.value)">${card.desc}</textarea>` : `<p class="text-detail text-slate-400 mt-2 italic font-medium">${card.desc}</p>`}
                         </div>`;
                 } else if (card.type === 'transport') {
                     html += `
-                        <div class="card transport-card shadow-sm p-10">
-                            ${isEditMode ? `<input placeholder="圖片連結" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-56 bg-slate-100 bg-cover bg-center rounded-3xl mb-6 shadow-inner" style="background-image: url('${card.img}')"></div>`}
-                            <div class="flex items-center gap-4 mb-8"><i class="fas fa-route text-blue-500 text-2xl"></i><span class="text-[16px] font-black text-slate-500 uppercase tracking-widest">Journey Log</span></div>
-                            <div class="space-y-8 mb-8">
+                        <div class="card transport-card shadow-sm p-6">
+                            ${isEditMode ? `<input placeholder="圖片連結" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-32 bg-slate-100 bg-cover bg-center rounded-2xl mb-4" style="background-image: url('${card.img}')"></div>`}
+                            <div class="flex items-center gap-3 mb-4 text-xs font-black text-slate-500 uppercase tracking-widest"><i class="fas fa-route text-blue-500"></i>Journey Log</div>
+                            <div class="space-y-5 mb-5">
                                 ${card.steps.map((s, sIdx) => `
                                     <div class="step-list-item">
-                                        <div class="flex items-start">${getTransportIcon(s.mode)}
-                                            <div>
-                                                <p class="text-detail font-bold text-slate-700">${s.mode}: ${s.route}</p>
-                                                <p class="text-[16px] text-slate-400 font-black mt-2">⏱️ ${s.time}</p>
-                                            </div>
-                                        </div>
+                                        <p class="text-detail font-bold text-slate-700 flex items-center">${getTransportIcon(s.mode)}${s.mode}: ${s.route}</p>
+                                        <p class="text-[14px] text-slate-400 font-black ml-10">⏱️ ${s.time}</p>
                                     </div>
                                 `).join('')}
                             </div>
-                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'detail', this.value)">${card.detail}</textarea>` : `<div class="bg-blue-50/70 p-6 rounded-3xl text-blue-700 italic font-bold text-detail border border-blue-100">${card.detail}</div>`}
+                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'detail', this.value)">${card.detail}</textarea>` : `<div class="bg-blue-50/70 p-4 rounded-xl text-blue-700 italic font-bold text-detail border border-blue-100">${card.detail}</div>`}
                         </div>`;
                 } else if (card.type === 'spot') {
                     html += `
-                        <div class="card spot-card shadow-xl p-10">
-                            ${isEditMode ? `<input placeholder="圖片連結" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-80 bg-slate-100 bg-cover bg-center rounded-[2.5rem] mb-8 shadow-xl" style="background-image: url('${card.img}')"></div>`}
-                            <div class="flex items-center gap-4 mb-6"><i class="fas fa-camera-retro text-orange-400 text-2xl"></i><span class="text-[16px] font-black text-slate-400 uppercase tracking-widest">Spotlight</span></div>
-                            ${isEditMode ? `<input value="${card.name}" onchange="updateCardField(${idx}, 'name', this.value)">` : `<h3 class="text-4xl font-bold text-slate-700 serif tracking-tight">${card.name}</h3>`}
-                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'desc', this.value)">${card.desc}</textarea>` : `<p class="text-detail text-slate-500 mt-6 leading-relaxed font-medium">${card.desc}</p>`}
+                        <div class="card spot-card shadow-xl p-6">
+                            ${isEditMode ? `<input placeholder="圖片連結" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-56 bg-slate-100 bg-cover bg-center rounded-2xl mb-5 shadow-xl" style="background-image: url('${card.img}')"></div>`}
+                            <div class="flex items-center gap-3 mb-3 text-xs font-black text-slate-400 uppercase tracking-widest"><i class="fas fa-camera-retro text-orange-400"></i>Spotlight</div>
+                            ${isEditMode ? `<input value="${card.name}" onchange="updateCardField(${idx}, 'name', this.value)">` : `<h3 class="text-title text-slate-700 serif tracking-tight">${card.name}</h3>`}
+                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'desc', this.value)">${card.desc}</textarea>` : `<p class="text-detail text-slate-500 mt-4 leading-relaxed font-medium">${card.desc}</p>`}
                         </div>`;
                 }
             });
@@ -323,7 +311,6 @@
                     if (doc.exists()) { localData = doc.data(); }
                     renderNavBar(); renderContent();
                 }, (err) => {
-                    console.warn("Snapshot failed, using local", err);
                     renderNavBar(); renderContent();
                 });
             } else {
@@ -333,10 +320,9 @@
 
         window.addEventListener('firebase-ready', loadData);
         window.addEventListener('firebase-error', loadData);
-        // 3秒後還沒跑出來就強製載入預設
-        setTimeout(() => { if(document.getElementById('itinerary-content').innerText.includes('同步')) loadData(); }, 3000);
+        setTimeout(() => { if(document.getElementById('itinerary-content').innerText.includes('同步')) loadData(); }, 2000);
     </script>
 
-    <style> .fade-in { animation: fadeIn 0.8s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } </style>
+    <style> .fade-in { animation: fadeIn 0.6s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } </style>
 </body>
 </html>
