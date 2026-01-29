@@ -49,21 +49,21 @@
         .hotel-card { border-left: 10px solid var(--accent-hotel); }
         .arrow-divider { display: flex; justify-content: center; align-items: center; height: 45px; color: #E2E8F0; font-size: 1.5rem; }
         .day-btn { flex: 0 0 auto; width: 75px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 22px; transition: all 0.3s; background: transparent; }
-        .day-btn.active { background: white; box-shadow: 0 6px 20px rgba(0,0,0,0.08); color: var(--accent-transport); transform: translateY(-3px); border: 1px solid #E2E8F0; }
+        .day-btn.active { background: white; box-shadow: 0 6px 20px rgba(0,0,0,0.1); color: var(--accent-transport); transform: translateY(-3px); border: 1px solid #E2E8F0; }
         .step-list-item { position: relative; padding-left: 36px; border-left: 2px solid #CBD5E1; margin-left: 10px; margin-bottom: 16px; }
         .step-list-item::before { content: ''; position: absolute; left: -6px; top: 8px; width: 10px; height: 10px; background: var(--accent-transport); border-radius: 50%; }
         .nav-link-btn { color: var(--accent-transport); font-size: 0.9rem; font-weight: 700; background: #EFF6FF; padding: 4px 12px; border-radius: 10px; }
         .btn-add { background: #F8FAFC; color: #94A3B8; width: 100%; padding: 14px; border-radius: 20px; border: 2px dashed #E2E8F0; font-weight: bold; margin: 12px 0; font-size: 14px; }
         .btn-delete { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #ef4444; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2); }
         input, textarea, select { background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; width: 100%; font-size: 16px; margin-bottom: 12px; }
-        .text-detail { font-size: 15px; line-height: 1.6; }
-        .text-title { font-size: 22px; font-weight: 700; }
-        .preview-img { width: 100%; height: 150px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; border: 1px solid #EEE; display: none; }
+        .text-detail { font-size: 16px; line-height: 1.7; }
+        .text-title { font-size: 24px; font-weight: 700; }
+        .preview-img { width: 100%; height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; border: 1px solid #EEE; display: none; }
     </style>
 </head>
 <body class="max-w-md mx-auto min-h-screen pb-28">
 
-    <header class="sticky top-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md pt-8 pb-4 shadow-sm">
+    <header class="sticky top-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md pt-10 pb-4 shadow-sm">
         <div class="px-5 mb-5 flex justify-between items-end">
             <div>
                 <h1 class="text-3xl font-extralight tracking-widest serif italic text-slate-700">The Archive.</h1>
@@ -73,7 +73,7 @@
                 <i class="fas fa-edit text-lg"></i>
             </button>
         </div>
-        <div class="flex overflow-x-auto no-scrollbar gap-3 px-5 pb-2" id="date-navbar"></div>
+        <div class="flex overflow-x-auto no-scrollbar gap-4 px-6 pb-2" id="date-navbar"></div>
     </header>
 
     <main class="px-5 mt-6" id="itinerary-content">
@@ -84,34 +84,34 @@
     </main>
 
     <!-- AI Add Modal -->
-    <div id="ai-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-6">
-        <div class="bg-white w-full rounded-[32px] p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div id="ai-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-6">
+        <div class="bg-white w-full rounded-[36px] p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-start mb-2">
                 <h3 class="text-2xl font-bold serif text-slate-700">AI 導遊規劃</h3>
-                <button onclick="closeAIModal()" class="text-slate-300 hover:text-slate-500"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="closeAIModal()" class="text-slate-300 hover:text-slate-500 p-1"><i class="fas fa-times text-2xl"></i></button>
             </div>
-            <p class="text-slate-400 text-xs mb-6 tracking-wide uppercase font-bold italic">AI 將根據目的地與 Google 連結規劃最順路程</p>
+            <p class="text-slate-400 text-sm mb-6 font-medium italic text-detail">AI 將根據目的地與 Google 連結規劃最順路程</p>
             
-            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1 block">目的地名稱 <span class="text-red-400">*</span></label>
+            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1.5 block">目的地名稱 <span class="text-red-400">*</span></label>
             <input type="text" id="ai-dest" placeholder="例如：龍疆湖 (Lungern)">
             
-            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1 block">Google Maps 連結</label>
+            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1.5 block">Google Maps 連結</label>
             <input type="text" id="ai-link" placeholder="貼上地圖分享連結">
             
-            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1 block">行程備註</label>
+            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1.5 block">行程備註</label>
             <textarea id="ai-notes" rows="2" placeholder="備註您的特殊需求..."></textarea>
 
-            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1 block">參考照片 (JPG)</label>
+            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1.5 block">現場照片 (JPG)</label>
             <div class="relative mb-4">
                 <input type="file" id="ai-file" accept=".jpg,.jpeg" class="hidden" onchange="previewImage(this)">
-                <button onclick="document.getElementById('ai-file').click()" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-bold bg-slate-50">
+                <button onclick="document.getElementById('ai-file').click()" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-bold bg-slate-50 hover:bg-slate-100 transition">
                     <i class="fas fa-image mr-2 text-lg"></i> 選擇檔案
                 </button>
                 <img id="img-preview" class="preview-img mt-3 shadow-sm">
             </div>
 
             <button id="ai-submit-btn" onclick="processAIPlanning()" class="w-full bg-emerald-500 py-4 rounded-2xl font-bold text-white shadow-xl shadow-emerald-100 flex items-center justify-center mt-2">
-                <i class="fas fa-magic mr-2"></i> 開始規劃並嵌入
+                <i class="fas fa-magic mr-2"></i> 開始規劃並寫入
             </button>
         </div>
     </div>
@@ -134,12 +134,12 @@
             }
         };
 
-        // 完整的 13 天行程數據 (3/18 - 3/31)
+        // 完整 13 天行程數據 (3/18 - 3/31)
         const defaultTripData = {
             days: [
                 { day: 1, date: "3/18", weekday: "WED", title: "入境蘇黎世 ➔ 因特拉肯", cards: [
                     { type: "hotel", name: "台北機場 (TPE)", desc: "00:20 出發 EK0387。開啟之旅！", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&q=80" },
-                    { type: "transport", name: "移動路程", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95?auto=format&fit=crop&q=80", steps: [{mode: "飛機", route: "杜拜轉機 ➔ 12:25 抵達蘇黎世", time: "12hr+"}, {mode: "火車", route: "蘇黎世機場 ➔ 因特拉肯", time: "2hr"}], detail: "建議搭乘景觀段欣賞湖景。持有 Swiss Pass 即可。" },
+                    { type: "transport", name: "移動路程", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95?auto=format&fit=crop&q=80", steps: [{mode: "飛機", route: "杜拜轉機 ➔ 12:25 抵達蘇黎世", time: "12hr+"}, {mode: "火車", route: "蘇黎世機場 ➔ 因特拉肯", time: "2hr"}], detail: "建議搭乘景觀段欣賞湖景。持有 Swiss Pass 刷 QR Code 即可。" },
                     { type: "hotel", name: "住：因特拉肯飯店", desc: "連住 5 晚的第一晚。調整時差。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 2, date: "3/19", weekday: "THU", title: "少女峰：歐洲之巔全覽", cards: [
@@ -262,7 +262,7 @@
         const renderContent = () => {
             const data = localData.days.find(d => d.day === currentDay);
             const container = document.getElementById('itinerary-content');
-            if(!data) { container.innerHTML = `<p class="py-20 text-center text-slate-400 text-sm">目前此日期尚無詳細內容。</p>`; return; }
+            if(!data) { container.innerHTML = `<p class="py-20 text-center text-slate-400 text-sm font-medium">目前此日期尚無詳細內容。</p>`; return; }
 
             let html = `
                 <div class="mb-10 fade-in">
@@ -289,7 +289,7 @@
                     cardHtml = `<div class="card transport-card shadow-sm p-10">
                             ${deleteBtnHtml}
                             <div class="h-40 bg-slate-100 bg-cover bg-center rounded-2xl mb-6 shadow-inner" style="background-image: url('${card.img}')"></div>
-                            <div class="flex items-center gap-4 mb-8 text-[15px] font-black text-slate-500 uppercase tracking-widest"><i class="fas fa-route text-blue-500 text-2xl"></i>Journey Log</div>
+                            <div class="flex items-center gap-4 mb-8 text-[15px] font-black text-slate-500 uppercase tracking-widest"><i class="fas fa-route text-blue-500 text-xl"></i>Journey Log</div>
                             <div class="space-y-8 mb-8">
                                 ${card.steps.map(s => `
                                     <div class="step-list-item">
@@ -345,23 +345,28 @@
             const currentDayObj = localData.days.find(d => d.day === currentDay);
             const prevSpot = currentDayObj.cards[insertIndex] ? currentDayObj.cards[insertIndex].name : "飯店";
 
-            const systemPrompt = `你是一位專業的瑞士旅遊導覽。規劃從「${prevSpot}」到新景點「${dest}」的路程。參考地圖：${link}。備註：${notes}。請務必回傳純 JSON，不可包含 Markdown 標記，結構：{"transport":{"steps":[{"mode":"火車/纜車/步行","route":"站A➔站B","time":"20m"}],"detail":"細節"},"spot":{"name":"地名","desc":"攝影點建議描述"}}。`;
+            const systemPrompt = `你是一位專業的瑞士旅遊導覽。請根據新景點「${dest}」、地圖「${link}」與備註「${notes}」，規劃從上一站「${prevSpot}」出發的路程。
+            規則：
+            1. 評估兩地距離與交通工具 (火車、快線、纜車或步行)。
+            2. 務必僅回傳純 JSON，不可包含任何 Markdown 標記或前言後語。
+            3. 結構：{"transport":{"steps":[{"mode":"火車/纜車/步行","route":"描述","time":"時間"}],"detail":"建議"},"spot":{"name":"地名","desc":"描述與攝影點建議"}}。`;
 
             try {
                 const response = await retryWithBackoff(() => fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: "開始規劃" }] }],
+                        contents: [{ parts: [{ text: "開始規劃行程需求" }] }],
                         systemInstruction: { parts: [{ text: systemPrompt }] },
                         generationConfig: { responseMimeType: "application/json" }
                     })
                 }));
                 const result = await response.json();
                 
-                // 強化資料清洗邏輯
+                // 更強大的資料提取邏輯：尋找第一個 { 與最後一個 } 之間的內容
                 let text = result.candidates[0].content.parts[0].text;
-                text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-                const aiResult = JSON.parse(text);
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) throw new Error("Could not find JSON in response");
+                const aiResult = JSON.parse(jsonMatch[0]);
 
                 const finalImg = uploadedImageBase64 || "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80";
 
@@ -374,8 +379,8 @@
                 closeAIModal();
                 renderContent();
             } catch (e) { 
-                alert("AI 規劃解析失敗，請手動調整景點名稱或嘗試簡化備註。"); 
-                console.error(e); 
+                console.error("AI Parse Error:", e);
+                alert("AI 規劃解析失敗，請手動調整或嘗試縮短目的地名稱。"); 
             } finally { 
                 btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic mr-2"></i>開始規劃並寫入'; 
             }
