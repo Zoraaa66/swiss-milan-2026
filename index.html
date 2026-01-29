@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Swiss & Milan 2026 | AI 數位行程全紀錄</title>
+    <title>Swiss & Milan 2026 | AI 數位旅遊書</title>
     <!-- Tailwind & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -40,40 +40,39 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@600&display=swap');
         :root { --bg-base: #FDFCFB; --accent-transport: #5B84B1; --accent-spot: #D4A373; --accent-hotel: #8E7B6D; }
-        body { background-color: var(--bg-base); color: #3D3D3D; font-family: 'Noto Sans TC', sans-serif; -webkit-font-smoothing: antialiased; font-size: 16px; }
+        body { background-color: var(--bg-base); color: #3D3D3D; font-family: 'Noto Sans TC', sans-serif; -webkit-font-smoothing: antialiased; font-size: 15px; }
         .serif { font-family: 'Noto Serif TC', serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .card { background: white; border-radius: 28px; width: 100%; margin-bottom: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid rgba(230, 225, 218, 0.6); position: relative; }
         .transport-card { background: #F8FAFC; border: 1.5px dashed var(--accent-transport); }
-        .spot-card { border-bottom: 5px solid var(--accent-spot); }
+        .spot-card { border-bottom: 6px solid var(--accent-spot); }
         .hotel-card { border-left: 10px solid var(--accent-hotel); }
-        .arrow-divider { display: flex; justify-content: center; align-items: center; height: 45px; color: #E2E8F0; font-size: 1.5rem; }
+        .arrow-divider { display: flex; justify-content: center; align-items: center; height: 40px; color: #E2E8F0; font-size: 1.5rem; }
         .day-btn { flex: 0 0 auto; width: 75px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 22px; transition: all 0.3s; background: transparent; }
         .day-btn.active { background: white; box-shadow: 0 6px 20px rgba(0,0,0,0.1); color: var(--accent-transport); transform: translateY(-3px); border: 1px solid #E2E8F0; }
         .step-list-item { position: relative; padding-left: 36px; border-left: 2px solid #CBD5E1; margin-left: 10px; margin-bottom: 16px; }
         .step-list-item::before { content: ''; position: absolute; left: -6px; top: 8px; width: 10px; height: 10px; background: var(--accent-transport); border-radius: 50%; }
-        .nav-link-btn { color: var(--accent-transport); font-size: 0.9rem; font-weight: 700; background: #EFF6FF; padding: 4px 12px; border-radius: 10px; }
-        .btn-add { background: #F8FAFC; color: #94A3B8; width: 100%; padding: 14px; border-radius: 20px; border: 2px dashed #E2E8F0; font-weight: bold; margin: 12px 0; font-size: 14px; }
+        .btn-add { background: #F8FAFC; color: #94A3B8; width: 100%; padding: 12px; border-radius: 18px; border: 2px dashed #E2E8F0; font-weight: bold; margin: 10px 0; font-size: 13px; }
         .btn-delete { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #ef4444; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2); }
-        input, textarea, select { background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; width: 100%; font-size: 16px; margin-bottom: 12px; }
-        .text-detail { font-size: 16px; line-height: 1.7; }
-        .text-title { font-size: 24px; font-weight: 700; }
-        .preview-img { width: 100%; height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; border: 1px solid #EEE; display: none; }
+        input, textarea, select { background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px; width: 100%; font-size: 15px; margin-bottom: 10px; }
+        .text-detail { font-size: 15px; line-height: 1.6; }
+        .text-title { font-size: 22px; font-weight: 700; }
+        .preview-img { width: 100%; height: 180px; object-fit: cover; border-radius: 14px; margin-bottom: 12px; border: 1px solid #EEE; display: none; }
     </style>
 </head>
-<body class="max-w-md mx-auto min-h-screen pb-28">
+<body class="max-w-md mx-auto min-h-screen pb-24">
 
-    <header class="sticky top-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md pt-10 pb-4 shadow-sm">
+    <header class="sticky top-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md pt-8 pb-4 shadow-sm">
         <div class="px-5 mb-5 flex justify-between items-end">
             <div>
                 <h1 class="text-3xl font-extralight tracking-widest serif italic text-slate-700">The Archive.</h1>
-                <p class="text-[12px] uppercase tracking-[0.4em] text-slate-400 mt-1 font-bold italic">2026 Swiss Journey</p>
+                <p class="text-[12px] uppercase tracking-[0.3em] text-slate-400 mt-1 font-bold italic">2026 Journey Guide</p>
             </div>
             <button id="edit-toggle" class="bg-slate-100 p-2.5 rounded-full text-slate-400 hover:text-emerald-500 transition">
                 <i class="fas fa-edit text-lg"></i>
             </button>
         </div>
-        <div class="flex overflow-x-auto no-scrollbar gap-4 px-6 pb-2" id="date-navbar"></div>
+        <div class="flex overflow-x-auto no-scrollbar gap-4 px-5 pb-2" id="date-navbar"></div>
     </header>
 
     <main class="px-5 mt-6" id="itinerary-content">
@@ -90,24 +89,24 @@
                 <h3 class="text-2xl font-bold serif text-slate-700">AI 導遊規劃</h3>
                 <button onclick="closeAIModal()" class="text-slate-300 hover:text-slate-500 p-1"><i class="fas fa-times text-2xl"></i></button>
             </div>
-            <p class="text-slate-400 text-sm mb-6 font-medium italic">填入資訊，AI 將為您串接完美的瀑布流路徑</p>
+            <p class="text-slate-400 text-sm mb-6 font-medium italic">填寫目的地與地圖，AI 將自動串接路程</p>
             
-            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1.5 block">目的地名稱 <span class="text-red-400">*</span></label>
+            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1 block tracking-wider">目的地名稱 <span class="text-red-400">*</span></label>
             <input type="text" id="ai-dest" placeholder="例如：龍疆湖 (Lungern)">
             
-            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1.5 block">Google Maps 連結</label>
+            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1 block tracking-wider">Google Maps 連結</label>
             <input type="text" id="ai-link" placeholder="貼上地圖分享連結">
             
-            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1.5 block">備註</label>
+            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1 block tracking-wider">行程備註</label>
             <textarea id="ai-notes" rows="2" placeholder="備註您的特殊需求..."></textarea>
 
-            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1.5 block">現場照片 (JPG)</label>
+            <label class="text-[10px] font-black text-slate-500 uppercase ml-1 mb-1 block tracking-wider">現場照片 (JPG)</label>
             <div class="relative mb-4">
                 <input type="file" id="ai-file" accept=".jpg,.jpeg" class="hidden" onchange="previewImage(this)">
-                <button onclick="document.getElementById('ai-file').click()" class="w-full py-5 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-bold bg-slate-50">
-                    <i class="fas fa-image mr-2 text-lg"></i> 選擇拍攝照片
+                <button onclick="document.getElementById('ai-file').click()" class="w-full py-5 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-bold bg-slate-50 hover:bg-slate-100 transition">
+                    <i class="fas fa-camera mr-2 text-lg"></i> 選擇拍攝照片
                 </button>
-                <img id="img-preview" class="preview-img mt-3 shadow-sm">
+                <img id="img-preview" class="preview-img mt-4 shadow-sm">
             </div>
 
             <button id="ai-submit-btn" onclick="processAIPlanning()" class="w-full bg-emerald-500 py-4 rounded-2xl font-bold text-white shadow-xl shadow-emerald-100 flex items-center justify-center mt-2">
@@ -134,44 +133,42 @@
             }
         };
 
-        // 完整的 13 天數據 (3/18 - 3/31)
         const defaultTripData = {
             days: [
-                { day: 1, date: "3/18", weekday: "WED", title: "入境蘇黎世 ➔ 因特拉肯", cards: [
-                    { type: "hotel", name: "台北機場 (TPE)", desc: "00:20 EK0387。檢查護照與 Swiss Pass。", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&q=80" },
-                    { type: "transport", name: "移動路程", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95?auto=format&fit=crop&q=80", steps: [{mode: "飛機", route: "杜拜轉機 ➔ 12:25 抵達 ZRH", time: "12hr+"}, {mode: "火車", route: "蘇黎世機場 ➔ 因特拉肯", time: "2hr"}], detail: "建議搭乘景觀段欣賞湖景。" },
-                    { type: "hotel", name: "住：因特拉肯飯店", desc: "首晚入住。連住 5 晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
+                { day: 1, date: "3/18", weekday: "WED", title: "蘇黎世入境 ➔ 因特拉肯", cards: [
+                    { type: "hotel", name: "台北機場 (TPE)", desc: "00:20 出發 EK0387。開啟瑞士之旅！", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "鐵路移動路程", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95?auto=format&fit=crop&q=80", steps: [{mode: "飛機", route: "杜拜轉機 ➔ 12:25 抵達 ZRH", time: "12hr+"}, {mode: "火車", route: "蘇黎世機場 ➔ 因特拉肯", time: "2hr"}], detail: "建議搭乘景觀段欣賞龍疆湖。持 STP 刷 QR Code 上車即可。" },
+                    { type: "hotel", name: "住：因特拉肯飯店", desc: "連住 5 晚的第一晚。調整時差。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 2, date: "3/19", weekday: "THU", title: "少女峰：歐洲之巔全覽", cards: [
                     { type: "hotel", name: "起點：因特拉肯飯店", desc: "準備好高海拔衣物。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
-                    { type: "transport", name: "登山路徑", img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c?auto=format&fit=crop&q=80", steps: [{mode: "火車 R61", route: "東站 ➔ 轉運站", time: "35m"}, {mode: "快線纜車", route: "Eiger Express", time: "15m"}, {mode: "齒軌火車", route: "艾格冰河 ➔ 少女峰站", time: "25m"}], detail: "持 STP 購買此段票券有折扣。" },
-                    { type: "spot", name: "斯芬克斯觀景台", img: "https://images.unsplash.com/photo-1541410965313-d53b3c16ef17?auto=format&fit=crop&q=80", desc: "11:00-14:00 拍攝重點：阿萊奇冰川。" },
-                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "休息吃晚餐。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
+                    { type: "transport", name: "少女峰登山路線", img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c?auto=format&fit=crop&q=80", steps: [{mode: "火車 R61", route: "東站 ➔ 轉運站", time: "35m"}, {mode: "快線纜車", route: "Eiger Express", time: "15m"}, {mode: "齒軌火車", route: "艾格冰河 ➔ 少女峰站", time: "25m"}], detail: "11:00-14:00 拍攝熱點：阿萊奇冰川、冰原平台、斯芬克斯。" },
+                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "回飯店休息吃晚餐。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 3, date: "3/20", weekday: "FRI", title: "First 倒影 ➔ 盧達本納", cards: [
                     { type: "hotel", name: "起點：因特拉肯飯店", desc: "健行日，穿好鞋。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
                     { type: "transport", name: "前往 First 山頂", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80", steps: [{mode: "火車 R61", route: "Interlaken ➔ Grindelwald", time: "35m"}, {mode: "纜車", route: "Grindelwald ➔ First", time: "25m"}], detail: "健行 30-40 分鐘至巴哈阿爾普湖拍倒影。" },
-                    { type: "spot", name: "巴哈阿爾普湖 Bachalpsee", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80", desc: "捕捉著名雪山倒影（優先搶無風時段）。" },
+                    { type: "spot", name: "巴哈阿爾普湖 Bachalpsee", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80", desc: "捕捉雪山倒影。優先搶無風時段拍照。" },
                     { type: "spot", name: "施陶巴赫瀑布 / 盧達本納", img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&q=80", desc: "15:30-17:30 拍瀑布逆光。" },
-                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "休息。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
+                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "休息放鬆。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 4, date: "3/21", weekday: "SAT", title: "米倫 ➔ 雪朗峰之旅", cards: [
-                    { type: "hotel", name: "因特拉肯飯店", desc: "晨間出發。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
-                    { type: "transport", name: "登山纜車段", img: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80", steps: [{mode: "火車+纜車", route: "Lauterbrunnen ➔ Mürren", time: "30m"}, {mode: "纜車", route: "Mürren ➔ Schilthorn", time: "20m"}], detail: "雪朗峰頂有 360 度觀景台。" },
+                    { type: "hotel", name: "因特拉肯飯店", desc: "晨間計畫。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "登山纜車段", img: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80", steps: [{mode: "火車+纜車", route: "Lauterbrunnen ➔ Mürren", time: "30m"}, {mode: "纜車", route: "Mürren ➔ Schilthorn", time: "20m"}], detail: "雪朗峰頂看少女三峰最佳視角。" },
                     { type: "hotel", name: "終點：因特拉肯飯店", desc: "休息。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 5, date: "3/22", weekday: "SUN", title: "施皮茨 ➔ 森林藍湖", cards: [
-                    { type: "hotel", name: "因特拉肯飯店", desc: "悠閒週日。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
+                    { type: "hotel", name: "因特拉肯飯店", desc: "悠閒週日節奏。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
                     { type: "spot", name: "施皮茨城堡 Spiez", img: "https://images.unsplash.com/photo-1590494165264-1ebe3602eb80?auto=format&fit=crop&q=80", desc: "10:00-12:00 拍攝城堡與湖景。" },
-                    { type: "transport", name: "深入森林路程", img: "https://images.unsplash.com/photo-1627662056263-d73197607a7f?auto=format&fit=crop&q=80", steps: [{mode: "火車+公車", route: "Spiez ➔ Frutigen ➔ Blausee", time: "40m"}], detail: "藍湖鱒魚料理出名。" },
+                    { type: "transport", name: "前往藍湖路程", img: "https://images.unsplash.com/photo-1627662056263-d73197607a7f?auto=format&fit=crop&q=80", steps: [{mode: "火車+公車", route: "Spiez ➔ Frutigen ➔ Blausee", time: "40m"}], detail: "藍湖鱒魚料理必吃，水質翡翠藍。" },
                     { type: "hotel", name: "住：因特拉肯飯店", desc: "連住最後一晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 6, date: "3/23", weekday: "MON", title: "跨國移動 ➔ 米蘭", cards: [
-                    { type: "hotel", name: "退房：因特拉肯飯店", desc: "行李移動日。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
-                    { type: "transport", name: "跨國特快路段", img: "https://images.unsplash.com/photo-1528150177508-7cc0c36cda5c?auto=format&fit=crop&q=80", steps: [{mode: "火車", route: "Interlaken ➔ Spiez", time: "20m"}, {mode: "火車 EC", route: "Spiez ➔ Milano Centrale", time: "3.5h"}], detail: "EC 段必須事先劃位。下午米蘭逛街。" },
+                    { type: "hotel", name: "退房：因特拉肯飯店", desc: "移動到義大利。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "跨國特快路段", img: "https://images.unsplash.com/photo-1528150177508-7cc0c36cda5c?auto=format&fit=crop&q=80", steps: [{mode: "火車", route: "Interlaken ➔ Spiez", time: "20m"}, {mode: "火車 EC", route: "Spiez ➔ Milano Centrale", time: "3.5h"}], detail: "EuroCity 必須事先劃位。下午米蘭逛街。" },
                     { type: "hotel", name: "住：米蘭飯店", desc: "連住 2 晚的第一晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
                 ]},
-                { day: 7, date: "3/24", weekday: "TUE", title: "米蘭市區經典拍攝", cards: [
+                { day: 7, date: "3/24", weekday: "TUE", title: "米蘭市區深度拍攝", cards: [
                     { type: "hotel", name: "米蘭飯店", desc: "早餐後出發。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
                     { type: "spot", name: "米蘭主教座堂 Duomo", img: "https://images.unsplash.com/photo-1528150177508-7cc0c36cda5c?auto=format&fit=crop&q=80", desc: "下午光線最美。登頂拍攝尖塔與廣場。" },
                     { type: "hotel", name: "住：米蘭飯店", desc: "第二晚米蘭。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" }
@@ -179,10 +176,10 @@
                 { day: 8, date: "3/25", weekday: "WED", title: "告別米蘭 ➔ 策馬特", cards: [
                     { type: "hotel", name: "米蘭飯店", desc: "前往山城移動。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80" },
                     { type: "transport", name: "前往策馬特", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80", steps: [{mode: "火車", route: "Milano ➔ Visp ➔ Zermatt", time: "3.5h"}], detail: "進入策馬特無車區。" },
-                    { type: "hotel", name: "住：策馬特飯店", desc: "連住 5 晚。首晚初見馬峰。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" }
+                    { type: "hotel", name: "住：策馬特飯店", desc: "首見馬峰。連住 5 晚。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 9, date: "3/26", weekday: "THU", title: "策馬特：全時段拍攝", cards: [
-                    { type: "hotel", name: "策馬特飯店", desc: "晨間計畫。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" },
+                    { type: "hotel", name: "策馬特飯店", desc: "晨間拍攝計畫。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" },
                     { type: "spot", name: "馬特洪峰：黃金日出", img: "https://images.unsplash.com/photo-1536431311719-398b6704d4cc?auto=format&fit=crop&q=80", desc: "經典 Kirchbrücke 拍晨曦。" },
                     { type: "spot", name: "小鎮：藍調時刻", img: "https://images.unsplash.com/photo-1541410965313-d53b3c16ef17?auto=format&fit=crop&q=80", desc: "傍晚教堂草坡拍小鎮燈火。" },
                     { type: "hotel", name: "住：策馬特飯店", desc: "休息。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" }
@@ -200,12 +197,15 @@
                 ]},
                 { day: 12, date: "3/29", weekday: "SUN", title: "策馬特：備用彈性日", cards: [
                     { type: "hotel", name: "策馬特飯店", desc: "隨心所欲的一天。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" },
-                    { type: "spot", name: "小鎮休閒 / 補拍日", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80", desc: "採買紀念品、買巧克力、調整狀態。" },
+                    { type: "spot", name: "小鎮休閒 / 補拍日", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80", desc: "採買紀念品、買巧克力。" },
                     { type: "hotel", name: "住：策馬特飯店", desc: "收行李準備返程。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" }
                 ]},
                 { day: 13, date: "3/30", weekday: "MON", title: "策馬特 ➔ 機場 ➔ 賦歸", cards: [
-                    { type: "hotel", name: "退房：策馬特飯店", desc: "08:00 啟程回機場。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" },
-                    { type: "transport", name: "返程長途路段", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&q=80", steps: [{mode: "火車", route: "Zermatt ➔ Visp ➔ ZRH Airport", time: "4hr"}], detail: "3/31 16:10 抵台。旅程結束。" }
+                    { type: "hotel", name: "退房：策馬特飯店", desc: "08:00 前出發。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793?auto=format&fit=crop&q=80" },
+                    { type: "transport", name: "返程路程", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&q=80", steps: [{mode: "火車", route: "Zermatt ➔ Zurich Airport", time: "4hr"}], detail: "準備登機回國。" }
+                ]},
+                { day: 14, date: "3/31", weekday: "TUE", title: "平安抵達台灣", cards: [
+                    { type: "hotel", name: "桃園機場 (TPE)", desc: "16:10 抵達。旅程圓滿結束。", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&q=80" }
                 ]}
             ]
         };
@@ -219,8 +219,8 @@
         const getTransportIcon = (mode) => {
             const m = mode.toLowerCase();
             if (m.includes('火車') || m.includes('train') || m.includes('ggb')) return '<i class="fas fa-train mr-3 text-blue-500 text-2xl"></i>';
-            if (m.includes('纜車') || m.includes('cable') || m.includes('快線')) return '<i class="fas fa-cable-car mr-3 text-purple-500 text-2xl"></i>';
-            if (m.includes('步行') || m.includes('走') || m.includes('健行')) return '<i class="fas fa-walking mr-3 text-emerald-500 text-2xl"></i>';
+            if (m.includes('纜車') || m.includes('cable')) return '<i class="fas fa-cable-car mr-3 text-purple-500 text-2xl"></i>';
+            if (m.includes('步行') || m.includes('走')) return '<i class="fas fa-walking mr-3 text-emerald-500 text-2xl"></i>';
             if (m.includes('飛機') || m.includes('落地')) return '<i class="fas fa-plane mr-3 text-slate-400 text-2xl"></i>';
             return '<i class="fas fa-chevron-right mr-3 text-slate-300 text-2xl"></i>';
         };
@@ -244,11 +244,13 @@
             localData.days.sort((a,b) => a.day - b.day).forEach(item => {
                 const btn = document.createElement('button');
                 btn.className = `day-btn ${item.day === currentDay ? 'active' : ''}`;
+                btn.id = `day-btn-${item.day}`;
                 btn.onclick = () => { 
                     currentDay = item.day; 
                     renderNavBar(); 
                     renderContent(); 
                     window.scrollTo({top: 0, behavior: 'smooth'}); 
+                    document.getElementById(`day-btn-${item.day}`).scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                 };
                 btn.innerHTML = `<span class="text-[12px] font-black text-slate-400 opacity-60 uppercase">Day</span>
                                  <span class="text-3xl font-serif italic leading-none my-1">${item.day}</span>
@@ -260,7 +262,7 @@
         const renderContent = () => {
             const data = localData.days.find(d => d.day === currentDay);
             const container = document.getElementById('itinerary-content');
-            if(!data) { container.innerHTML = `<p class="py-20 text-center text-slate-400 text-sm font-medium">目前此日期尚無詳細內容。</p>`; return; }
+            if(!data) { container.innerHTML = `<p class="py-20 text-center text-slate-400 text-sm font-medium">尚無詳細內容。</p>`; return; }
 
             let html = `
                 <div class="mb-10 fade-in">
@@ -314,7 +316,7 @@
 
                 html += cardHtml;
                 if (isEditMode) {
-                    html += `<button onclick="openAIModal(${idx})" class="btn-add"><i class="fas fa-magic mr-2"></i>AI 規劃新點位插入此處</button>`;
+                    html += `<button onclick="openAIModal(${idx})" class="btn-add"><i class="fas fa-magic mr-2"></i>在此後新增 AI 規劃點</button>`;
                 }
             });
             container.innerHTML = html;
@@ -341,33 +343,25 @@
             btn.innerHTML = '<i class="fas fa-spinner animate-spin mr-2"></i>AI 導遊分析路徑中...';
 
             const currentDayObj = localData.days.find(d => d.day === currentDay);
-            // 抓取上一站的名稱
             const prevSpot = currentDayObj.cards[insertIndex] ? currentDayObj.cards[insertIndex].name : "起始點";
 
-            const systemPrompt = `你是一位專業的瑞士旅遊導覽。規劃從「${prevSpot}」到新目的地「${dest}」的路徑。
-            規則：
-            1. 參考地圖連結：${link} 與備註：${notes}。
-            2. 回傳必須為純 JSON，不可包含解釋文字。
-            3. 結構：{"transport":{"steps":[{"mode":"火車/纜車/步行","route":"詳細轉乘路徑","time":"時間"}],"detail":"搭乘重點建議"},"spot":{"name":"地名","desc":"攝影點建議描述"}}。`;
-
-            // 【關鍵修正】：將實際數據傳入 User Prompt
-            const userPrompt = `上一站：${prevSpot}。新增景點：${dest}。地圖連結：${link}。使用者備註：${notes}`;
+            const systemPrompt = `你是一位專業的瑞士旅遊導覽。規劃從「${prevSpot}」到新目的地「${dest}」的路徑。參考地圖：${link}。備註：${notes}。請務必回傳純 JSON，結構：{"transport":{"steps":[{"mode":"火車/纜車/步行","route":"站A➔站B","time":"20m"}],"detail":"細節"},"spot":{"name":"地名","desc":"攝影點建議描述"}}。`;
+            const userPrompt = `從 ${prevSpot} 前往 ${dest}，Google 地圖：${link}，備註：${notes}`;
 
             try {
                 const response = await retryWithBackoff(() => fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: userPrompt }] }], // 這裡已修正
+                        contents: [{ parts: [{ text: userPrompt }] }],
                         systemInstruction: { parts: [{ text: systemPrompt }] },
                         generationConfig: { responseMimeType: "application/json" }
                     })
                 }));
                 const result = await response.json();
                 
-                // 強大 JSON 提取器
-                let text = result.candidates[0].content.parts[0].text;
-                const jsonMatch = text.match(/\{[\s\S]*\}/);
-                if (!jsonMatch) throw new Error("AI 回傳格式不正確");
+                let rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                if (!jsonMatch) throw new Error("無效的 JSON 內容");
                 const aiResult = JSON.parse(jsonMatch[0]);
 
                 const finalImg = uploadedImageBase64 || "https://images.unsplash.com/photo-1520175480921-4edfa0683001?auto=format&fit=crop&q=80";
@@ -381,8 +375,7 @@
                 closeAIModal();
                 renderContent();
             } catch (e) { 
-                console.error("AI Error:", e);
-                alert("AI 規劃解析失敗。請確認輸入的目的地名稱正確，或嘗試重新點擊一次。"); 
+                alert("AI 規劃失敗。請嘗試重新點擊一次。"); 
             } finally { 
                 btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic mr-2"></i>開始規劃並寫入'; 
             }
@@ -397,7 +390,7 @@
                 document.getElementById('save-btn').classList.add('hidden');
                 isEditMode = false;
                 renderContent();
-            } catch (e) { alert("雲端儲存失敗"); }
+            } catch (e) { alert("儲存失敗"); }
         };
 
         const loadData = () => {
