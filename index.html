@@ -3,21 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Swiss & Milan 2026 | 導航級數位行程</title>
-    <!-- Tailwind & FontAwesome -->
+    <title>Archive 2026 | 瑞士與米蘭智慧指南</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         let firebaseConfig;
-        try {
-            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        } catch (e) { console.error("Firebase Config Error", e); }
-
+        try { firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null; } catch (e) {}
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-milan-2026';
         
         if (firebaseConfig) {
@@ -26,421 +22,570 @@
             window.db = getFirestore(app);
             window.appId = appId;
             const initAuth = async () => {
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(window.auth, __initial_auth_token);
-                    } else { await signInAnonymously(window.auth); }
-                    window.dispatchEvent(new CustomEvent('firebase-ready'));
-                } catch (e) { window.dispatchEvent(new CustomEvent('firebase-error')); }
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(window.auth, __initial_auth_token);
+                } else { await signInAnonymously(window.auth); }
             };
             initAuth();
-        } else { setTimeout(() => window.dispatchEvent(new CustomEvent('firebase-error')), 500); }
+            onAuthStateChanged(window.auth, (user) => {
+                if (user) { window.userId = user.uid; window.dispatchEvent(new CustomEvent('auth-ready')); }
+            });
+        }
     </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600&display=swap');
-        :root { --bg-base: #F4F7F9; --accent-transport: #3B82F6; --accent-spot: #1E293B; --accent-main: #EF4444; }
-        body { background-color: var(--bg-base); color: #1E293B; font-family: 'Noto Sans TC', sans-serif; -webkit-font-smoothing: antialiased; font-size: 15px; }
+        :root { --main-coral: #FF6B6B; --main-blue: #3B82F6; --bg-soft: #F8FAFC; }
+        body { background-color: var(--bg-soft); color: #334155; font-family: 'Noto Sans TC', sans-serif; -webkit-font-smoothing: antialiased; }
         .serif { font-family: 'Noto Serif TC', serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* 景點卡片：白色實體質感 */
-        .spot-card { background: white; border-radius: 28px; width: 100%; margin: 16px 0; padding: 26px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,1); position: relative; }
-        .spot-img { width: 100%; height: 240px; object-fit: cover; border-radius: 20px; margin-bottom: 18px; background: #E2E8F0; }
+        /* 頁面切換效果 */
+        .page { display: none; }
+        .page.active { display: block; animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 行程卡片 */
+        .spot-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); position: relative; transition: all 0.2s; border: 1.5px solid transparent; }
+        .spot-card.visited { background: #FFF7ED; border-color: #FED7AA; }
+        .spot-card.visited .spot-title { color: #94A3B8; text-decoration: line-through; }
         
-        /* 導航日誌卡片：藍色背景，步進式 */
-        .nav-log-card { background: #EBF5FF; border-radius: 28px; padding: 24px; border: 1.5px solid #DBEAFE; margin: 8px 0; position: relative; }
-        .nav-step { position: relative; padding-left: 32px; margin-bottom: 20px; }
-        .nav-step:last-child { margin-bottom: 0; }
-        .nav-step::before { content: ''; position: absolute; left: 7px; top: 12px; width: 2px; height: calc(100% + 12px); background: #BFDBFE; border-left: 2px dashed #BFDBFE; }
-        .nav-step:last-child::before { display: none; }
-        .nav-dot { position: absolute; left: 0; top: 6px; width: 16px; height: 16px; background: white; border: 4px solid var(--accent-transport); border-radius: 50%; z-index: 2; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        /* 左側路徑線 */
+        .timeline-line { position: absolute; left: 18px; top: 0; bottom: 0; width: 3px; background: #E2E8F0; z-index: 0; }
+        .timeline-line.active { background: #FB923C; }
+        .timeline-item { position: relative; padding-left: 50px; }
+        .timeline-dot { position: absolute; left: 11px; top: 22px; width: 18px; height: 18px; border-radius: 50%; background: white; border: 4px solid #CBD5E1; z-index: 2; transition: 0.3s; }
+        .timeline-dot.visited { border-color: #FB923C; background: #FB923C; }
+        .person-marker { position: absolute; left: 5px; top: 16px; font-size: 24px; color: #EA580C; z-index: 10; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+        /* 底部導覽列 */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #E2E8F0; display: flex; padding: 10px 0; z-index: 100; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: bold; color: #94A3B8; transition: 0.2s; }
+        .nav-item.active { color: var(--main-coral); }
+        .nav-item i { font-size: 20px; margin-bottom: 4px; }
+
+        /* 交通導航區塊 */
+        .nav-link-card { background: #EFF6FF; border-radius: 16px; padding: 12px 16px; margin: 4px 0 12px 50px; border-left: 4px solid #3B82F6; }
         
-        .day-btn { flex: 0 0 auto; width: 72px; height: 95px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 22px; transition: all 0.3s; background: white; color: #64748B; border: 1px solid #E2E8F0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        .day-btn.active { background: #1E293B; color: white; border-color: #1E293B; transform: translateY(-4px); box-shadow: 0 12px 20px rgba(30, 41, 59, 0.15); }
+        /* 天數選擇器 */
+        .day-tab { flex: 0 0 auto; width: 65px; height: 80px; border-radius: 16px; background: white; border: 1px solid #E2E8F0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .day-tab.active { background: var(--main-coral); color: white; border-color: var(--main-coral); box-shadow: 0 8px 15px rgba(255, 107, 107, 0.2); }
+
+        /* 展開動畫 */
+        .details { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .details.open { max-height: 1000px; padding-top: 12px; }
+
+        /* 費用欄位樣式 */
+        .expense-row { display: flex; align-items: center; background: white; padding: 15px; border-radius: 16px; margin-bottom: 8px; border: 1px solid #F1F5F9; }
         
-        input, textarea, select { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 16px; width: 100%; font-size: 14px; margin-bottom: 12px; }
-        .btn-delete { background: #fee2e2; color: #ef4444; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: absolute; top: -10px; right: -10px; z-index: 20; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .modal-content { background: white; width: 100%; border-radius: 40px; padding: 32px; max-height: 90vh; overflow-y: auto; }
-        .smart-add-btn { background: #10b981; color: white; width: 100%; padding: 20px; border-radius: 24px; font-weight: 900; margin-bottom: 24px; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.2); letter-spacing: 1px; }
-        .transport-icon-box { background: white; padding: 10px; border-radius: 12px; display: inline-flex; margin-right: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .photography-badge { background: #FFF7ED; color: #C2410C; border: 1px solid #FFEDD5; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 900; display: inline-flex; align-items: center; gap: 4px; }
+        /* 準備清單樣式 */
+        .check-item { display: flex; align-items: center; padding: 16px; border-radius: 16px; background: white; margin-bottom: 10px; transition: 0.3s; }
+        .check-item.done { background: #FFF7ED; border-left: 6px solid #FB923C; }
     </style>
 </head>
-<body class="max-w-md mx-auto min-h-screen pb-32">
+<body class="max-w-md mx-auto min-h-screen">
 
-    <header class="sticky top-0 z-50 bg-[#F4F7F9]/90 backdrop-blur-md pt-8 pb-4">
-        <div class="px-6 mb-6 flex justify-between items-center">
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 border-b border-slate-100">
+        <div class="flex justify-between items-center mb-4">
             <div>
-                <h1 class="text-3xl font-black serif text-slate-800 tracking-tighter italic">Archive 2026.</h1>
-                <p class="text-[10px] uppercase tracking-[0.4em] text-slate-400 font-black mt-1">Swiss & Italy Navigation</p>
+                <h1 class="text-2xl font-black italic tracking-tighter text-slate-800">The Archive.</h1>
+                <div id="header-weather" class="text-[10px] font-bold text-slate-400 mt-0.5 flex items-center gap-2">
+                    <!-- 氣象由 JS 更新 -->
+                </div>
             </div>
-            <button id="edit-toggle" class="bg-white shadow-lg p-3.5 rounded-2xl text-slate-400 hover:text-red-500 transition active:scale-90">
-                <i class="fas fa-magic text-lg"></i>
+            <button id="edit-mode-toggle" class="bg-slate-100 w-10 h-10 rounded-full flex items-center justify-center text-slate-400">
+                <i class="fas fa-edit"></i>
             </button>
         </div>
-        <div class="flex overflow-x-auto no-scrollbar gap-3 px-6 pb-2" id="date-navbar"></div>
+        <div id="day-navbar" class="flex overflow-x-auto no-scrollbar gap-3 pb-2"></div>
     </header>
 
-    <main class="px-6 mt-4" id="itinerary-content">
-        <div class="flex flex-col justify-center items-center py-40 text-slate-300">
-            <i class="fas fa-circle-notch animate-spin text-5xl mb-6"></i>
-            <p class="text-lg font-black tracking-widest">LOADING DATABASE...</p>
-        </div>
+    <!-- Content Pages -->
+    <main class="px-6 pt-4 pb-32">
+        
+        <!-- Tab 1: 詳細行程 -->
+        <section id="page-itinerary" class="page active">
+            <div class="flex items-center justify-between mb-4">
+                <div class="bg-white px-4 py-2 rounded-2xl shadow-sm border border-slate-100">
+                    <span class="text-[10px] font-black text-slate-400 uppercase block">預計出發</span>
+                    <input type="time" id="departure-time-input" class="text-lg font-black bg-transparent border-none p-0 focus:ring-0 text-slate-700">
+                </div>
+                <div class="text-right">
+                    <p id="total-travel-time" class="text-[11px] font-black text-blue-500 bg-blue-50 px-3 py-1 rounded-full inline-block">總路程: 讀取中</p>
+                </div>
+            </div>
+
+            <div id="itinerary-list" class="relative">
+                <!-- 行程由 JS 生成 -->
+            </div>
+
+            <button id="add-smart-btn" class="hidden w-full mt-6 bg-emerald-500 text-white py-4 rounded-2xl font-black shadow-xl shadow-emerald-100 flex items-center justify-center gap-2">
+                <i class="fas fa-magic"></i> AI 智慧加點並重新排序
+            </button>
+        </section>
+
+        <!-- Tab 2: 景點路線總表 (附件一風格) -->
+        <section id="page-overview" class="page">
+            <h2 class="text-xl font-black serif italic mb-6 text-slate-800">Route Overview</h2>
+            <div id="overview-map-list" class="space-y-4">
+                <!-- 風格化地圖清單 -->
+            </div>
+        </section>
+
+        <!-- Tab 3: 費用紀錄 -->
+        <section id="page-expenses" class="page">
+            <div class="flex justify-between items-end mb-6">
+                <h2 class="text-xl font-black serif italic text-slate-800 text-title">Financial Logs</h2>
+                <div class="text-right">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">總支出</p>
+                    <p id="grand-total-expense" class="text-xl font-black text-slate-800">CHF 0.00</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm mb-6">
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-3">新增支出</p>
+                <div class="space-y-3">
+                    <input type="text" id="exp-name" placeholder="花費名稱 (選填)">
+                    <div class="flex gap-2">
+                        <input type="number" id="exp-amount" placeholder="金額 (必填)" class="flex-1">
+                        <select id="exp-user" class="w-24">
+                            <option value="user1">您</option>
+                            <option value="user2">旅伴</option>
+                        </select>
+                    </div>
+                    <button onclick="addExpense()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold">記錄花費</button>
+                </div>
+            </div>
+
+            <div id="expense-list" class="space-y-2"></div>
+        </section>
+
+        <!-- Tab 4: 行前清單 -->
+        <section id="page-prep" class="page">
+            <div id="prep-congrats" class="hidden bg-orange-100 text-orange-700 p-5 rounded-3xl text-center font-black mb-6 border-2 border-orange-200 animate-bounce">
+                🎉 恭喜準備完成，旅遊愉快！
+            </div>
+
+            <h3 class="text-sm font-black text-slate-400 uppercase mb-4 tracking-widest italic">每日固定攜帶</h3>
+            <div id="prep-list-fixed" class="space-y-2"></div>
+            
+            <h3 class="text-sm font-black text-slate-400 uppercase mt-8 mb-4 tracking-widest italic">自定義提醒</h3>
+            <div id="prep-list-custom" class="space-y-2 mb-4"></div>
+            <div class="flex gap-2">
+                <input type="text" id="new-prep-item" placeholder="新增提醒事項..." class="flex-1">
+                <button onclick="addPrepItem()" class="bg-slate-800 text-white px-4 rounded-xl font-bold">新增</button>
+            </div>
+        </section>
+
     </main>
 
-    <!-- AI 智慧導航規劃視窗 -->
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchPage('itinerary')"><i class="fas fa-calendar-alt"></i>詳細行程</button>
+        <button class="nav-item" onclick="switchPage('overview')"><i class="fas fa-map-marked-alt"></i>路線圖</button>
+        <button class="nav-item" onclick="switchPage('expenses')"><i class="fas fa-wallet"></i>花費</button>
+        <button class="nav-item" onclick="switchPage('prep')"><i class="fas fa-suitcase"></i>準備清單</button>
+    </nav>
+
+    <!-- AI Modal -->
     <div id="ai-modal" class="modal-bg">
         <div class="modal-content shadow-2xl">
-            <div class="flex justify-between items-start mb-6">
-                <div>
-                    <h3 class="text-2xl font-black text-slate-800 tracking-tighter">AI 智慧路順</h3>
-                    <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Smart Auto-Reorder Logic</p>
-                </div>
-                <button onclick="closeAIModal()" class="bg-slate-100 p-2.5 rounded-full text-slate-400"><i class="fas fa-times text-xl"></i></button>
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black tracking-tighter italic">Smart Add.</h3>
+                <button onclick="closeAIModal()" class="text-slate-300"><i class="fas fa-times text-2xl"></i></button>
             </div>
-            
-            <label class="text-[11px] font-black text-slate-500 uppercase ml-1 block mb-2">Google Map 分享網址 (必填)</label>
-            <input type="text" id="ai-link" placeholder="貼上地圖網址...">
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="text-[11px] font-black text-slate-500 uppercase ml-1 block mb-2">加入日期</label>
-                    <select id="ai-day-select"></select>
-                </div>
-                <div>
-                    <label class="text-[11px] font-black text-slate-500 uppercase ml-1 block mb-2">預計停留 (H)</label>
-                    <input type="number" id="ai-duration" value="2" step="0.5">
-                </div>
-            </div>
-
-            <label class="text-[11px] font-black text-slate-500 uppercase ml-1 block mb-2">攝影/行程備註 (選填)</label>
-            <textarea id="ai-notes" rows="3" placeholder="例如：16:00 拍日落逆光..."></textarea>
-
-            <label class="text-[11px] font-black text-slate-500 uppercase ml-1 block mb-2">景點照片 (JPG 選填)</label>
-            <input type="file" id="ai-file" accept=".jpg,.jpeg" class="hidden" onchange="previewImage(this)">
-            <button onclick="document.getElementById('ai-file').click()" class="w-full py-5 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-sm font-black bg-slate-50 mb-4 transition hover:bg-slate-100 active:scale-95">
-                <i class="fas fa-camera mr-2 text-lg"></i> 選擇檔案
+            <label class="text-[10px] font-black text-slate-500 uppercase block mb-1">Google Map 連結 (必填)</label>
+            <input type="text" id="ai-link" placeholder="貼上分享連結...">
+            <label class="text-[10px] font-black text-slate-500 uppercase block mb-1">預計停留時間 (小時)</label>
+            <input type="number" id="ai-stay" value="1.5" step="0.5">
+            <label class="text-[10px] font-black text-slate-500 uppercase block mb-1">備註 (選填)</label>
+            <textarea id="ai-notes" rows="2" placeholder="在此處想要做什麼？"></textarea>
+            <label class="text-[10px] font-black text-slate-500 uppercase block mb-1">景點照片</label>
+            <input type="file" id="ai-photo" accept=".jpg" class="hidden" onchange="previewImg(this)">
+            <button onclick="document.getElementById('ai-photo').click()" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold mb-4">
+                <i class="fas fa-image mr-2"></i> 上傳景點照片
             </button>
-            <img id="img-preview" class="w-full h-44 object-cover rounded-2xl mb-6 shadow-md" style="display:none;">
-
-            <hr class="mb-6 border-slate-100">
-            <label class="text-[11px] font-black text-blue-500 uppercase ml-1 block mb-2">Gemini API Key</label>
-            <input type="password" id="user-api-key" placeholder="貼上您的 API Key以啟用 AI...">
-
-            <div id="ai-status" class="hidden text-xs font-bold p-4 rounded-2xl mb-4 bg-red-50 text-red-500 border border-red-100"></div>
-
-            <button id="ai-submit-btn" onclick="processAIPlanning()" class="w-full bg-slate-900 py-5 rounded-2xl font-black text-white shadow-2xl flex items-center justify-center transition active:scale-95">
-                <i class="fas fa-compass mr-3 text-lg text-blue-400"></i> 送出並由導遊自動排程
+            <img id="img-preview-box" class="w-full h-40 object-cover rounded-xl mb-4 hidden">
+            
+            <label class="text-[10px] font-black text-blue-500 uppercase block mb-1">API KEY (僅第一次需輸入)</label>
+            <input type="password" id="user-api-key" placeholder="貼上 Gemini API Key...">
+            
+            <button id="ai-submit-btn" onclick="processSmartAdd()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black shadow-2xl flex items-center justify-center gap-3">
+                <i class="fas fa-compass"></i> 開始智慧規劃路徑
             </button>
         </div>
     </div>
 
-    <!-- Save Button -->
-    <button id="save-btn" class="hidden fixed bottom-10 right-8 bg-emerald-500 text-white w-16 h-16 rounded-full shadow-2xl z-[100] flex items-center justify-center text-3xl transition active:scale-90 border-4 border-white">
+    <!-- Green Save FAB -->
+    <button id="save-btn" class="hidden fixed bottom-24 right-6 bg-emerald-500 text-white w-14 h-14 rounded-full shadow-2xl z-[100] flex items-center justify-center text-2xl border-4 border-white">
         <i class="fas fa-cloud-upload-alt"></i>
     </button>
 
     <script type="module">
         import { doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 核心 14 天導航級數據
+        // --- 核心數據：3/18 到 3/31 完整行程 ---
         const defaultTripData = {
-            config: { apiKey: "" },
+            config: { apiKey: "", startTime: "08:00" },
             days: [
-                { day: 1, date: "3/18", weekday: "WED", title: "穿越湖泊：黃金列車段入境", startTime: "12:30", cards: [
-                    { type: "spot", name: "台灣機場", desc: "00:20 出發 EK0387。檢查護照與 Swiss Pass 啟動憑證。", img: "", duration: 1 },
-                    { type: "transport", name: "飛機落地與入境", navSteps: [
-                        { mode: "飛機", desc: "12:25 抵達蘇黎世機場 (ZRH)", time: "12h+" },
-                        { mode: "步行", desc: "跟隨指標前往 SBB 機場火車站", time: "10分" }
-                    ], totalTime: "約 1 小時" },
-                    { type: "spot", name: "蘇黎世機場車站", desc: "在此啟動 Swiss Pass。行李可選擇寄送至 Interlaken（需確認）。", img: "", duration: 0.5 },
-                    { type: "transport", name: "景觀段移動 (黃金列車線)", navSteps: [
-                        { mode: "火車 IC8", desc: "Zürich Flughafen ➔ 伯恩 Bern (中央月台)", stops: "3站", time: "75分" },
-                        { mode: "轉乘", desc: "伯恩站內轉向 4 號月台往 Interlaken", time: "10分" },
-                        { mode: "火車 IC61", desc: "伯恩 ➔ 因特拉肯東站 Interlaken Ost", stops: "2站", time: "55分" }
-                    ], totalTime: "約 2.5 小時", detail: "※ 此段為黃金列車線，沿途可見龍疆湖與布里恩茨湖。" },
-                    { type: "spot", name: "因特拉肯東站", desc: "Day 1 抵達。前往飯店放行李、採買食物、調整時差。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793", duration: 12, photography: "黃昏時刻可在草坪看滑翔傘降落。" }
+                { day: 1, date: "3/18", weekday: "WED", title: "台北 ➔ 蘇黎世 ➔ 因特拉肯", weather: { temp: "5~12°C", rain: "10%", vis: "良好", icon: "cloud-sun" }, cards: [
+                    { type: "spot", name: "台北機場 (TPE)", desc: "00:20 出發 EK0387。開啟之旅！", img: "", stay: 1, visited: false },
+                    { type: "transport", mode: "飛機", route: "杜拜轉機 ➔ 12:25 抵 ZRH", time: "12hr+" },
+                    { type: "spot", name: "蘇黎世機場 ZRH", desc: "落地、入境、啟動 Swiss Pass。", img: "", stay: 1, visited: false },
+                    { type: "transport", mode: "火車 IC8/61", route: "機場 ➔ 伯恩 ➔ 因特拉肯", stops: "3站/2站", time: "2.5hr", map: "https://www.google.com/maps/dir/Zurich+Airport/Interlaken+Ost/" },
+                    { type: "spot", name: "住宿：因特拉肯 (待定)", desc: "放行李、早休息調整時差。", img: "", stay: 12, visited: false }
                 ]},
-                { day: 2, date: "3/19", weekday: "THU", title: "少女峰：歐洲之巔全覽", startTime: "08:15", cards: [
-                    { type: "spot", name: "因特拉肯東站", desc: "晨間出發。穿著保暖衣物（高海拔）。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001", duration: 0.5 },
-                    { type: "transport", name: "少女峰登山導航", navSteps: [
-                        { mode: "火車 R61", desc: "東站 ➔ 格林德瓦轉運站 Terminal", stops: "4站", time: "35分" },
-                        { mode: "步行", desc: "步行 3 分鐘至 Eiger Express 入口", time: "3分" },
-                        { mode: "快線纜車", desc: "Eiger Express ➔ 艾格冰河站 Glacier", stops: "1站", time: "15分" },
-                        { mode: "齒軌火車", desc: "艾格冰河 ➔ 少女峰站 Jungfraujoch", stops: "1站", time: "25分" }
-                    ], totalTime: "約 1.5 小時" },
-                    { type: "spot", name: "斯芬克斯觀景台 / 阿萊奇冰川", desc: "11:00-14:00 拍攝重點：冰原平台、冰川俯瞰、萬年雪景。", img: "https://images.unsplash.com/photo-1541410965313-d53b3c16ef17", duration: 4, photography: "冰原平台光線強烈，建議使用減光鏡或偏光鏡。" },
-                    { type: "transport", name: "原路返程", navSteps: [
-                        { mode: "齒軌火車", desc: "少女峰站 ➔ 艾格冰河", time: "25分" },
-                        { mode: "火車", desc: "原路經格林德瓦返回因特拉肯", time: "70分" }
-                    ], totalTime: "約 1.5 小時" },
-                    { type: "spot", name: "住宿飯店：因特拉肯", desc: "待確認，住因特拉肯。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001", duration: 12 }
+                { day: 2, date: "3/19", weekday: "THU", title: "少女峰：歐洲之巔全覽", weather: { temp: "-8~2°C", rain: "5%", vis: "高山雲海", icon: "snowflake" }, cards: [
+                    { type: "spot", name: "因特拉肯東站", desc: "晨間出發前往格林德瓦。", stay: 0.5 },
+                    { type: "transport", mode: "火車 R61", route: "東站 ➔ 格林德瓦 Terminal", time: "35分" },
+                    { type: "transport", mode: "艾格快線", route: "轉運站 ➔ 艾格冰河站", time: "15分" },
+                    { type: "spot", name: "少女峰巔峰全覽", desc: "11:00-14:00 拍攝熱點：斯芬克斯觀景台、阿萊奇冰川、冰原平台。", stay: 4 },
+                    { type: "spot", name: "住宿：因特拉肯 (待定)", desc: "原路返回飯店休息。", stay: 12 }
                 ]},
-                { day: 3, date: "3/20", weekday: "FRI", title: "First 倒影 ➔ 盧達本納", startTime: "08:00", cards: [
-                    { type: "spot", name: "因特拉肯東站", desc: "出發前往格林德瓦。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793", duration: 0.5 },
-                    { type: "transport", name: "前往 First", navSteps: [
-                        { mode: "火車", desc: "東站 ➔ 格林德瓦站", stops: "4站", time: "35分" },
-                        { mode: "步行", desc: "穿過格林德瓦主街至纜車站", time: "12分" },
-                        { mode: "纜車", desc: "纜車站 ➔ First 山頂", stops: "1站", time: "25分" }
-                    ], totalTime: "約 1.2 小時" },
-                    { type: "spot", name: "巴哈阿爾普湖 Bachalpsee", desc: "拍雪山倒影。需步行約 40-50 分鐘。", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b", duration: 2.5, photography: "上午無風時倒影最清晰。" },
-                    { type: "transport", name: "前往瀑布谷", navSteps: [
-                        { mode: "火車", desc: "格林德瓦 ➔ 雙湖站 Zweilütschinen", time: "18分" },
-                        { mode: "轉乘", desc: "同月台對面轉乘往 Lauterbrunnen", time: "12分" }
-                    ], totalTime: "約 40 分鐘" },
-                    { type: "spot", name: "盧達本納 Lauterbrunnen", desc: "15:30-17:30 拍 Staubbach Falls 逆光、村莊草地、Trümmelbach 瀑布。", img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4", duration: 2.5, photography: "逆光時刻瀑布會像發光的絲線。" }
+                { day: 3, date: "3/20", weekday: "FRI", title: "First 倒影 ➔ 盧達本納", weather: { temp: "2~10°C", rain: "20%", vis: "霧氣", icon: "cloud" }, cards: [
+                    { type: "spot", name: "First ＋ Bachalpsee 倒影湖", desc: "拍攝雪山倒影，需健行約 50 分鐘。", stay: 3 },
+                    { type: "transport", mode: "火車/公車", route: "Grindelwald ➔ Lauterbrunnen", time: "45分" },
+                    { type: "spot", name: "盧達本納 瀑布谷", desc: "拍 Staubbach Falls 逆光與村莊。", stay: 2 },
+                    { type: "spot", name: "住宿：因特拉肯 (待定)", desc: "休息。", stay: 12 }
                 ]},
-                { day: 4, date: "3/21", weekday: "SAT", title: "米倫 ➔ 雪朗峰 ➔ 秘境小鎮", startTime: "08:30", cards: [
-                    { type: "spot", name: "因特拉肯東站", desc: "前往盧達本納中轉。", img: "", duration: 0.5 },
-                    { type: "transport", name: "通往雲端導航", navSteps: [
-                        { mode: "火車", desc: "東站 ➔ 盧達本納", time: "20分" },
-                        { mode: "纜車", desc: "盧達本納 ➔ Grütschalp ➔ 米倫 Mürren", time: "25分" },
-                        { mode: "步行", desc: "穿過米倫小鎮至雪朗峰纜車站", time: "15分" },
-                        { mode: "纜車", desc: "米倫 ➔ Birg ➔ 雪朗峰 Schilthorn", time: "15分" }
-                    ], totalTime: "約 1.2 小時" },
-                    { type: "spot", name: "雪朗峰 Schilthorn", desc: "360度俯瞰艾格、僧侶、少女三峰。", img: "", duration: 3 },
-                    { type: "spot", name: "米倫小鎮 Mürren", desc: "無車小鎮，散步拍攝木屋與山景。", img: "", duration: 2 }
+                { day: 4, date: "3/21", weekday: "SAT", title: "米倫 ➔ 雪朗峰 Schilthorn", weather: { temp: "0~8°C", rain: "0%", vis: "晴朗", icon: "sun" }, cards: [
+                    { type: "spot", name: "Mürren 米倫小鎮", desc: "無車小鎮散步。", stay: 1.5 },
+                    { type: "transport", mode: "纜車", route: "Mürren ➔ Schilthorn", time: "20分" },
+                    { type: "spot", name: "雪朗峰 Schilthorn", desc: "眺望少女三峰最佳點。", stay: 3 },
+                    { type: "spot", name: "住宿：因特拉肯 (待定)", desc: "返回飯店。", stay: 12 }
                 ]},
-                { day: 5, date: "3/22", weekday: "SUN", title: "圖恩湖 ➔ 施皮茨 ➔ 森林藍湖", startTime: "09:00", cards: [
-                    { type: "spot", name: "圖恩湖遊船 / 施皮茨", desc: "拍攝施皮茨城堡 Spiez 與雪山倒影。", img: "", duration: 2, photography: "湖岸是拍城堡與背景雪山的經典角度。" },
-                    { type: "transport", name: "深入森林藍湖", navSteps: [
-                        { mode: "火車", desc: "Spiez ➔ Frutigen", time: "12分" },
-                        { mode: "公車 230", desc: "Frutigen ➔ Blausee BE", time: "15分" }
-                    ], totalTime: "約 40 分鐘" },
-                    { type: "spot", name: "森林藍湖 Blausee", desc: "如寶石般的湛藍湖水、鱒魚餐。", img: "", duration: 3, photography: "偏光鏡可消除水面反光，拍出清澈見底的效果。" }
+                { day: 5, date: "3/22", weekday: "SUN", title: "圖恩湖 ➔ 施皮茨城堡", weather: { temp: "5~14°C", rain: "15%", vis: "良好", icon: "cloud-sun" }, cards: [
+                    { type: "spot", name: "圖恩湖 Lake Thun", desc: "湖岸散步拍雪山倒影。", stay: 2 },
+                    { type: "spot", name: "施皮茨城堡 Spiez", desc: "絕美湖畔城堡。", stay: 2 },
+                    { type: "spot", name: "住宿：因特拉肯或 Spiez", desc: "最後一晚伯恩高地。", stay: 12 }
                 ]},
-                { day: 6, date: "3/23", weekday: "MON", title: "跨國移動：因特拉肯 ➔ 米蘭", startTime: "09:00", cards: [
-                    { type: "transport", name: "跨國長途導航", navSteps: [
-                        { mode: "火車", desc: "Interlaken Ost ➔ Spiez", time: "20分" },
-                        { mode: "火車 EC", desc: "Spiez ➔ Milano Centrale", time: "3.5-4h" }
-                    ], totalTime: "約 4.5 小時", detail: "※ 跨國 EC 必須事先劃位。" },
-                    { type: "spot", name: "米蘭中央車站", desc: "壯麗的法西斯式建築，放行李後自由活動。", img: "", duration: 2 },
-                    { type: "spot", name: "米蘭飯店", desc: "辦理入住。", img: "", duration: 12 }
+                { day: 6, date: "3/23", weekday: "MON", title: "因特拉肯 ➔ 米蘭 (移動日)", weather: { temp: "10~18°C", rain: "0%", vis: "良好", icon: "sun" }, cards: [
+                    { type: "transport", mode: "火車", route: "Interlaken ➔ Spiez", time: "20分" },
+                    { type: "transport", mode: "火車 EC", route: "Spiez ➔ 米蘭中央車站", time: "4hr", map: "https://www.google.com/maps/dir/Spiez/Milan+Centrale/" },
+                    { type: "spot", name: "住宿：米蘭", desc: "下午自由活動、逛街吃飯。", stay: 6 }
                 ]},
-                { day: 7, date: "3/24", weekday: "TUE", title: "米蘭市區：古典與現代拍攝", startTime: "10:00", cards: [
-                    { type: "spot", name: "米蘭主教座堂 Duomo", desc: "下午廣場光線最好，建議登頂拍尖塔。", img: "", duration: 3, photography: "15:00-17:00 光線溫和，適合拍白色大理石質感。" },
-                    { type: "spot", name: "埃馬努埃萊二世拱廊", desc: "經典圓頂、名牌店。", img: "", duration: 1.5 },
-                    { type: "spot", name: "Mercato Centrale Milano", desc: "晚餐美食市集。", img: "", duration: 2 }
+                { day: 7, date: "3/24", weekday: "TUE", title: "米蘭市區深度遊", weather: { temp: "12~20°C", rain: "0%", vis: "良好", icon: "sun" }, cards: [
+                    { type: "spot", name: "米蘭主教座堂 Duomo", desc: "下午廣場光線最好。", stay: 3 },
+                    { type: "spot", name: "埃馬努埃萊二世拱廊", desc: "精品與建築之美。", stay: 1.5 },
+                    { type: "spot", name: "Mercato Centrale Milano", desc: "晚餐美食大匯集。", stay: 2 },
+                    { type: "spot", name: "住宿：米蘭", stay: 12 }
                 ]},
-                { day: 8, date: "3/25", weekday: "WED", title: "米蘭 ➔ 策馬特：初見馬峰", startTime: "09:30", cards: [
-                    { type: "spot", name: "運河區 Naviglio Grande", desc: "上午漫步拍照。", img: "", duration: 2 },
-                    { type: "transport", name: "進入山城 (冰川快線段)", navSteps: [
-                        { mode: "火車", desc: "Milano ➔ 菲斯普 Visp", time: "2.5h" },
-                        { mode: "火車 (MGB)", desc: "Visp ➔ 策馬特 Zermatt", time: "1h" }
-                    ], totalTime: "約 3.5 小時", detail: "※ Visp 到 Zermatt 段為冰川快線精華。" },
-                    { type: "spot", name: "Matterhorn Viewpoint (日落)", desc: "17:30-19:00 拍攝藍調時刻與馬特洪峰金頂。", img: "", duration: 2, photography: "藍調時刻 (Blue Hour) 的光影對比最迷人。" }
+                { day: 8, date: "3/25", weekday: "WED", title: "米蘭 ➔ 策馬特 (初見)", weather: { temp: "2~10°C", rain: "0%", vis: "清晰", icon: "sun" }, cards: [
+                    { type: "spot", name: "Naviglio Grande 運河區", desc: "上午漫步拍照。", stay: 2.5 },
+                    { type: "transport", mode: "火車", route: "Milan ➔ Visp ➔ Zermatt", time: "3.5hr" },
+                    { type: "spot", name: "策馬特 Matterhorn Viewpoint", desc: "傍晚初見馬特洪峰，拍日落藍調。", stay: 2 },
+                    { type: "spot", name: "住宿：策馬特", stay: 12 }
                 ]},
-                { day: 9, date: "3/26", weekday: "THU", title: "策馬特全時段拍攝計畫", startTime: "05:30", cards: [
-                    { type: "spot", name: "Kirchbrücke 橋 (日出)", desc: "06:00 拍攝「黃金馬特洪峰」。", img: "", duration: 1.5, photography: "第一道陽光灑在山尖的瞬間。" },
-                    { type: "spot", name: "教堂草坡 / 老村 Hinterdorf", desc: "散步拍攝傳統瓦萊州木屋。", img: "", duration: 3 },
-                    { type: "spot", name: "Matterhorn Viewpoint (星空)", desc: "21:00-23:00 長曝拍馬特洪峰星跡。", img: "", duration: 3, photography: "建議攜帶腳架與快門線。" }
+                { day: 9, date: "3/26", weekday: "THU", title: "策馬特小鎮全方位拍攝", weather: { temp: "0~9°C", rain: "0%", vis: "極佳", icon: "sun" }, cards: [
+                    { type: "spot", name: "Kirchbrücke 橋 (日出)", desc: "拍攝黃金馬特洪峰。", stay: 1 },
+                    { type: "spot", name: "Hinterdorf 老村", desc: "拍攝古老瓦萊木屋。", stay: 2 },
+                    { type: "spot", name: "Matterhorn Viewpoint (星空)", desc: "夜晚拍攝長曝星空馬峰。", stay: 2 },
+                    { type: "spot", name: "住宿：策馬特", stay: 12 }
                 ]},
-                { day: 10, date: "3/27", weekday: "FRI", title: "Gornergrat ➔ Riffelsee 倒影湖", startTime: "08:30", cards: [
-                    { type: "transport", name: "齒軌火車導航", navSteps: [
-                        { mode: "火車 GGB", desc: "Zermatt GGB ➔ Gornergrat 觀景台", time: "35分" }
-                    ], totalTime: "35分", detail: "※ 上山坐右側，馬特洪峰一路相伴。" },
-                    { type: "spot", name: "Riffelsee 倒影湖", desc: "Rotenboden 站下坡走 10 分。拍攝經典倒影。", img: "", duration: 2, photography: "上午 10:00 前風平浪靜，倒影最穩。" },
-                    { type: "spot", name: "Gornergrat 觀景台", desc: "遠眺蒙特羅莎峰與冰河。", img: "", duration: 2 }
+                { day: 10, date: "3/27", weekday: "FRI", title: "Gornergrat ➔ 倒影湖", weather: { temp: "-5~5°C", rain: "0%", vis: "清晰", icon: "sun" }, cards: [
+                    { type: "transport", mode: "登山火車", route: "Zermatt ➔ Gornergrat", time: "35分" },
+                    { type: "spot", name: "Riffelsee 倒影湖", desc: "絕佳倒影位置，健行下坡 15 分。", stay: 3 },
+                    { type: "spot", name: "住宿：策馬特", stay: 12 }
                 ]},
-                { day: 11, date: "3/28", weekday: "SAT", title: "五湖健行：側面馬特洪峰", startTime: "09:00", cards: [
-                    { type: "transport", name: "登山纜車段", navSteps: [
-                        { mode: "地底纜車", desc: "Zermatt ➔ Sunnegga", time: "5分" },
-                        { mode: "纜車", desc: "Sunnegga ➔ Blauherd", time: "10分" }
-                    ], totalTime: "20分" },
-                    { type: "spot", name: "Stellisee 倒影湖", desc: "五湖中最美的一個，拍側面馬峰。", img: "", duration: 2 },
-                    { type: "spot", name: "芬德倫村 Findeln", desc: "下坡健行至此用餐，景色絕佳。", img: "", duration: 2 }
+                { day: 11, date: "3/28", weekday: "SAT", title: "Sunnegga 五湖健行", weather: { temp: "2~10°C", rain: "5%", vis: "良好", icon: "cloud-sun" }, cards: [
+                    { type: "transport", mode: "地底纜車", route: "Zermatt ➔ Sunnegga", time: "5分" },
+                    { type: "spot", name: "藍湖站 Blauherd", desc: "輕鬆下坡健行至 Findeln。", stay: 4 },
+                    { type: "spot", name: "住宿：策馬特", stay: 12 }
                 ]},
-                { day: 12, date: "3/29", weekday: "SUN", title: "策馬特：彈性補拍日", startTime: "09:00", cards: [
-                    { type: "spot", name: "小鎮散步 / 採買", desc: "買 Läderach 巧克力、紀念品、休息。", img: "", duration: 8 }
+                { day: 12, date: "3/29", weekday: "SUN", title: "策馬特彈性備用日", weather: { temp: "3~11°C", rain: "0%", vis: "良好", icon: "sun" }, cards: [
+                    { type: "spot", name: "補拍 / 咖啡廳休息", desc: "隨興享受時光。", stay: 8 },
+                    { type: "spot", name: "住宿：策馬特", stay: 12 }
                 ]},
-                { day: 13, date: "3/30", weekday: "MON", title: "策馬特 ➔ 蘇黎世機場", startTime: "08:00", cards: [
-                    { type: "transport", name: "返程長途導航", navSteps: [
-                        { mode: "火車", desc: "Zermatt ➔ Visp ➔ Zurich Airport", time: "4h" }
-                    ], totalTime: "4小時" },
-                    { type: "spot", name: "蘇黎世機場 / 賦歸", desc: "辦理退稅、免稅採買。", img: "", duration: 3 }
+                { day: 13, date: "3/30", weekday: "MON", title: "策馬特 ➔ 蘇黎世 (返程)", weather: { temp: "6~14°C", rain: "30%", vis: "中等", icon: "cloud-rain" }, cards: [
+                    { type: "transport", mode: "火車", route: "Zermatt ➔ Visp ➔ Zurich Airport", time: "4hr" },
+                    { type: "spot", name: "蘇黎世機場 / 賦歸", desc: "下午航班時間充裕。", stay: 3 }
                 ]},
-                { day: 14, date: "3/31", weekday: "TUE", title: "平安抵達台灣", cards: [
-                    { type: "spot", name: "桃園機場 (TPE)", desc: "16:10 抵達。旅程結束。", img: "", duration: 1 }
+                { day: 14, date: "3/31", weekday: "TUE", title: "平安抵達台灣", weather: { temp: "20~25°C", icon: "home" }, cards: [
+                    { type: "spot", name: "台灣桃園機場", desc: "圓滿結束旅程。", stay: 1 }
                 ]}
-            ]
+            ],
+            expenses: { user1: [], user2: [] },
+            checklist: { custom: [] }
         };
 
+        const fixedChecklist = ["護照", "信用卡", "現金", "手機", "行動電源", "常備藥", "衛生紙/濕紙巾"];
         let currentDay = 1;
         let isEditMode = false;
         let localData = defaultTripData;
-        let uploadedImageBase64 = "";
+        let uploadedImgB64 = "";
 
-        const getTransportIcon = (mode) => {
-            const m = mode.toLowerCase();
-            if (m.includes('步行') || m.includes('走')) return '<i class="fas fa-walking text-blue-400"></i>';
-            if (m.includes('火車')) return '<i class="fas fa-train text-blue-600"></i>';
-            if (m.includes('纜車') || m.includes('快線')) return '<i class="fas fa-cable-car text-purple-600"></i>';
-            if (m.includes('飛機')) return '<i class="fas fa-plane text-slate-500"></i>';
-            return '<i class="fas fa-arrow-right text-blue-300"></i>';
+        // --- 初始化與 Firebase 監聽 ---
+        const init = () => {
+            if (window.db) {
+                const docRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
+                onSnapshot(docRef, (snapshot) => {
+                    if (snapshot.exists()) localData = snapshot.data();
+                    renderAll();
+                }, (err) => { renderAll(); });
+            } else { renderAll(); }
         };
 
-        window.previewImage = (input) => {
+        window.addEventListener('auth-ready', init);
+        setTimeout(() => { if(!window.userId) renderAll(); }, 2000);
+
+        // --- 核心渲染函數 ---
+        const renderAll = () => {
+            renderDayNav();
+            renderItinerary();
+            renderOverview();
+            renderExpenses();
+            renderPrep();
+            updateWeather();
+        };
+
+        const renderDayNav = () => {
+            const nav = document.getElementById('day-navbar');
+            nav.innerHTML = '';
+            localData.days.forEach(d => {
+                const btn = document.createElement('button');
+                btn.className = `day-tab ${d.day === currentDay ? 'active' : ''}`;
+                btn.onclick = () => { currentDay = d.day; renderAll(); };
+                btn.innerHTML = `<span class="text-[9px] uppercase font-black opacity-60">Day</span><span class="text-xl serif italic font-black">${d.day}</span><span class="text-[10px] font-bold">${d.date}</span>`;
+                nav.appendChild(btn);
+            });
+        };
+
+        const renderItinerary = () => {
+            const dayData = localData.days.find(d => d.day === currentDay);
+            const list = document.getElementById('itinerary-list');
+            document.getElementById('departure-time-input').value = dayData.startTime || localData.config.startTime;
+            list.innerHTML = '';
+
+            let hasFoundCurrentMarker = false;
+            dayData.cards.forEach((card, idx) => {
+                if (card.type === 'spot') {
+                    const isCurrent = !card.visited && !hasFoundCurrentMarker;
+                    if (isCurrent) hasFoundCurrentMarker = true;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item';
+                    div.innerHTML = `
+                        <div class="timeline-line ${card.visited ? 'active' : ''}"></div>
+                        <div class="timeline-dot ${card.visited ? 'visited' : ''}"></div>
+                        ${isCurrent ? '<i class="fas fa-running person-marker"></i>' : ''}
+                        <div class="spot-card ${card.visited ? 'visited' : ''}" onclick="toggleExpand(${idx})">
+                            ${isEditMode ? `<button class="btn-delete" onclick="event.stopPropagation(); deleteCard(${idx})"><i class="fas fa-times"></i></button>` : ''}
+                            <div class="flex justify-between items-center">
+                                <h3 class="spot-title font-bold text-lg tracking-tight">${card.name}</h3>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md">STAY ${card.stay}H</span>
+                                    <button onclick="event.stopPropagation(); toggleVisited(${idx})" class="w-8 h-8 rounded-full ${card.visited ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-300'}"><i class="fas fa-check"></i></button>
+                                </div>
+                            </div>
+                            <div id="details-${idx}" class="details">
+                                ${card.img ? `<img src="${card.img}" class="w-full h-44 object-cover rounded-xl mb-3 shadow-inner">` : ''}
+                                <p class="text-sm leading-relaxed text-slate-500 font-medium">${card.desc || '尚無備註。'}</p>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                } else {
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item';
+                    div.innerHTML = `
+                        <div class="timeline-line"></div>
+                        <div class="nav-link-card">
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm font-bold text-blue-600"><i class="fas fa-route mr-2"></i>${card.mode}: ${card.route}</div>
+                                <span class="text-[10px] font-black text-blue-400 uppercase">${card.time}</span>
+                            </div>
+                            ${card.map ? `<a href="${card.map}" target="_blank" class="mt-3 block text-center bg-blue-600 text-white text-[11px] font-black py-2 rounded-lg"><i class="fas fa-location-arrow mr-1"></i> GOOGLE MAPS 導航</a>` : ''}
+                        </div>
+                    `;
+                    list.appendChild(div);
+                }
+            });
+            updateTotalTime(dayData);
+        };
+
+        const renderOverview = () => {
+            const list = document.getElementById('overview-map-list');
+            const dayData = localData.days.find(d => d.day === currentDay);
+            list.innerHTML = '';
+            dayData.cards.filter(c => c.type === 'spot').forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border-l-8 border-slate-800';
+                div.innerHTML = `<span class="text-2xl font-black italic opacity-20">${i+1}</span><div class="font-bold text-slate-700">${c.name}</div>`;
+                list.appendChild(div);
+            });
+        };
+
+        const renderExpenses = () => {
+            const list = document.getElementById('expense-list');
+            list.innerHTML = '';
+            let total = 0;
+            ["user1", "user2"].forEach(u => {
+                const uExpenses = localData.expenses[u] || [];
+                const uTotal = uExpenses.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+                total += uTotal;
+                
+                const section = document.createElement('div');
+                section.className = u === 'user1' ? 'mb-6' : '';
+                section.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-black uppercase text-slate-400">${u === 'user1' ? '您的紀錄' : '旅伴的紀錄'}</span>
+                        <span class="text-sm font-bold text-slate-700">CHF ${uTotal.toFixed(2)}</span>
+                    </div>
+                `;
+                uExpenses.forEach((item, idx) => {
+                    const row = document.createElement('div');
+                    row.className = 'expense-row';
+                    row.innerHTML = `<div class="flex-1 font-bold text-slate-700">${item.name || u}</div><div class="font-black text-slate-800">CHF ${item.amount}</div>`;
+                    section.appendChild(row);
+                });
+                list.appendChild(section);
+            });
+            document.getElementById('grand-total-expense').innerText = `CHF ${total.toFixed(2)}`;
+        };
+
+        const renderPrep = () => {
+            const fixed = document.getElementById('prep-list-fixed');
+            const custom = document.getElementById('prep-list-custom');
+            fixed.innerHTML = ''; custom.innerHTML = '';
+            
+            fixedChecklist.forEach(item => {
+                const isDone = (localData.checklist[item] === true);
+                const div = document.createElement('div');
+                div.className = `check-item ${isDone ? 'done' : ''}`;
+                div.onclick = () => { localData.checklist[item] = !isDone; renderPrep(); document.getElementById('save-btn').classList.remove('hidden'); };
+                div.innerHTML = `<i class="fas ${isDone ? 'fa-check-circle text-orange-500' : 'fa-circle text-slate-200'} text-xl mr-4"></i><span class="font-bold text-slate-700">${item}</span>`;
+                fixed.appendChild(div);
+            });
+
+            // 檢查是否全部完成
+            const allFixed = fixedChecklist.every(k => localData.checklist[k] === true);
+            document.getElementById('prep-congrats').classList.toggle('hidden', !allFixed);
+        };
+
+        const updateWeather = () => {
+            const w = localData.days.find(d => d.day === currentDay).weather || {};
+            document.getElementById('header-weather').innerHTML = `
+                <i class="fas fa-${w.icon || 'sun'} text-orange-400 text-lg"></i>
+                <span>${w.temp || 'N/A'}</span>
+                <span class="opacity-40">|</span>
+                <span>雨率 ${w.rain || '0%'}</span>
+                <span class="opacity-40">|</span>
+                <span>能見度 ${w.vis || '--'}</span>
+            `;
+        };
+
+        // --- 功能邏輯 ---
+        window.switchPage = (p) => {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`page-${p}`).classList.add('active');
+            document.querySelector(`[onclick="switchPage('${p}')"]`).classList.add('active');
+        };
+
+        window.toggleExpand = (idx) => {
+            const el = document.getElementById(`details-${idx}`);
+            el.classList.toggle('open');
+        };
+
+        window.toggleVisited = (idx) => {
+            const day = localData.days.find(d => d.day === currentDay);
+            day.cards[idx].visited = !day.cards[idx].visited;
+            renderAll();
+            document.getElementById('save-btn').classList.remove('hidden');
+        };
+
+        window.addExpense = () => {
+            const name = document.getElementById('exp-name').value;
+            const amt = document.getElementById('exp-amount').value;
+            const u = document.getElementById('exp-user').value;
+            if(!amt) return;
+            if(!localData.expenses[u]) localData.expenses[u] = [];
+            localData.expenses[u].push({ name, amount: parseFloat(amt).toFixed(2), date: new Date().toLocaleDateString() });
+            document.getElementById('exp-name').value = '';
+            document.getElementById('exp-amount').value = '';
+            renderExpenses();
+            document.getElementById('save-btn').classList.remove('hidden');
+        };
+
+        window.openAIModal = () => document.getElementById('ai-modal').style.display = 'flex';
+        window.closeAIModal = () => document.getElementById('ai-modal').style.display = 'none';
+
+        window.previewImg = (input) => {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    uploadedImageBase64 = e.target.result;
-                    document.getElementById('img-preview').src = uploadedImageBase64;
-                    document.getElementById('img-preview').style.display = 'block';
+                    uploadedImgB64 = e.target.result;
+                    document.getElementById('img-preview-box').src = uploadedImgB64;
+                    document.getElementById('img-preview-box').classList.remove('hidden');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         };
 
-        const renderNavBar = () => {
-            const navbar = document.getElementById('date-navbar');
-            const select = document.getElementById('ai-day-select');
-            navbar.innerHTML = ''; select.innerHTML = '';
-            localData.days.forEach(item => {
-                const btn = document.createElement('button');
-                btn.className = `day-btn ${item.day === currentDay ? 'active' : ''}`;
-                btn.onclick = () => { currentDay = item.day; renderNavBar(); renderContent(); window.scrollTo({top: 0, behavior: 'smooth'}); };
-                btn.innerHTML = `<span class="text-[9px] font-black uppercase opacity-60">Day</span><span class="text-2xl serif italic leading-none my-1">${item.day}</span><span class="text-[11px] font-black">${item.date}</span>`;
-                navbar.appendChild(btn);
-
-                const opt = document.createElement('option');
-                opt.value = item.day; opt.innerText = `Day ${item.day} (${item.date})`;
-                select.appendChild(opt);
-            });
-            select.value = currentDay;
-        };
-
-        const renderContent = () => {
-            const data = localData.days.find(d => d.day === currentDay);
-            const container = document.getElementById('itinerary-content');
-            if(!data) return;
-
-            let html = isEditMode ? `<button onclick="openAIModal()" class="smart-add-btn"><i class="fas fa-compass mr-2"></i>AI 智慧導覽：輸入連結自動規劃路順</button>` : '';
-            html += `<div class="mb-10"><h2 class="text-4xl font-black text-slate-800 serif italic leading-tight">${data.title}</h2><p class="mt-3 text-slate-400 font-black flex items-center gap-2"><i class="fas fa-regular fa-clock text-red-400"></i> PRESET DEPARTURE: ${data.startTime}</p></div>`;
-
-            data.cards.forEach((card, idx) => {
-                const delBtn = isEditMode ? `<button onclick="deleteCard(${idx})" class="btn-delete"><i class="fas fa-trash-alt text-[10px]"></i></button>` : '';
-                
-                if (card.type === 'spot') {
-                    html += `
-                        <div class="spot-card">
-                            ${delBtn}
-                            ${card.img ? `<img src="${card.img}" class="spot-img shadow-xl">` : ''}
-                            <div class="flex items-center gap-3 mb-2">
-                                <div class="bg-slate-900 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">Location</div>
-                                ${card.photography ? `<div class="photography-badge"><i class="fas fa-camera"></i> ${card.photography}</div>` : ''}
-                                <span class="text-slate-300 text-xs font-black ml-auto">STAY ${card.duration}H</span>
-                            </div>
-                            <h3 class="text-2xl font-black text-slate-800 tracking-tighter mb-3">${card.name}</h3>
-                            <p class="text-slate-500 leading-relaxed text-[15px] font-medium">${card.desc}</p>
-                        </div>`;
-                } else if (card.type === 'transport') {
-                    html += `
-                        <div class="nav-log-card shadow-sm">
-                            ${delBtn}
-                            <div class="flex items-center justify-between mb-5">
-                                <div class="text-[10px] font-black text-blue-500 uppercase tracking-widest"><i class="fas fa-route mr-2"></i>Navigation Log</div>
-                                <div class="text-[11px] font-black text-blue-400">${card.totalTime || '轉乘分析中'}</div>
-                            </div>
-                            <div class="space-y-0">
-                                ${(card.navSteps || []).map(step => `
-                                    <div class="nav-step">
-                                        <div class="nav-dot"></div>
-                                        <div class="flex items-start">
-                                            <div class="transport-icon-box">${getTransportIcon(step.mode)}</div>
-                                            <div>
-                                                <p class="text-[14px] font-bold text-slate-700">${step.mode}: ${step.desc}</p>
-                                                <p class="text-[11px] text-blue-400 font-black mt-1 uppercase tracking-tighter">
-                                                    ${step.stops ? `<i class="fas fa-ellipsis-v mr-1"></i> ${step.stops} · ` : ''}
-                                                    <i class="fas fa-clock mr-1"></i> ${step.time}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            ${card.detail ? `<div class="mt-6 bg-white/50 p-3 rounded-xl text-[12px] text-blue-600 italic font-bold border border-blue-100">💡 指引：${card.detail}</div>` : ''}
-                        </div>`;
-                }
-            });
-            container.innerHTML = html;
-        };
-
-        window.openAIModal = () => { document.getElementById('ai-modal').style.display = 'flex'; };
-        window.closeAIModal = () => { document.getElementById('ai-modal').style.display = 'none'; };
-        window.deleteCard = (idx) => { localData.days.find(d => d.day === currentDay).cards.splice(idx, 1); document.getElementById('save-btn').classList.remove('hidden'); renderContent(); };
-
-        window.processAIPlanning = async () => {
-            const link = document.getElementById('ai-link').value.trim();
-            const notes = document.getElementById('ai-notes').value.trim();
-            const dayNum = parseInt(document.getElementById('ai-day-select').value);
-            const duration = parseFloat(document.getElementById('ai-duration').value);
-            const key = document.getElementById('user-api-key').value.trim() || localData.config.apiKey;
-            const statusDiv = document.getElementById('ai-status');
-
-            if (!link) { alert("請貼上 Google Map 網址"); return; }
-            if (!key) { alert("請輸入 API Key"); return; }
+        window.processSmartAdd = async () => {
+            const link = document.getElementById('ai-link').value;
+            const stay = document.getElementById('ai-stay').value;
+            const note = document.getElementById('ai-notes').value;
+            const key = document.getElementById('user-api-key').value || localData.config.apiKey;
+            if(!link) return;
             
             const btn = document.getElementById('ai-submit-btn');
-            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner animate-spin mr-2"></i>正在分析地理座標與導引路徑...';
-            statusDiv.style.display = 'none';
-
-            localData.config.apiKey = key;
-            const targetDay = localData.days.find(d => d.day === dayNum);
-            const currentPlan = JSON.stringify(targetDay.cards);
-
-            const systemPrompt = `你是一位專業導遊 AI。分析新需求(Google Map: ${link}, 備註: ${notes}, 停留: ${duration}H)
-            並與現有行程順序(${currentPlan})比對地理位置，決定新景點最順路的插入位置。
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch animate-spin"></i> 正在重新排程路徑...';
             
-            要求：
-            1. 交通必須為 type: "transport" 且包含詳細 navSteps。
-            2. navSteps 格式：{"mode":"步行/火車/纜車","desc":"描述起點➔終點","stops":"停靠站(選填)","time":"時間"}。
-            3. 回傳完整當天 cards 陣列 JSON，嚴禁解釋文字。`;
+            const dayData = localData.days.find(d => d.day === currentDay);
+            const currentCards = JSON.stringify(dayData.cards);
+
+            const prompt = `你是一位專業導遊。請根據新景點 (Map: ${link}, 停留: ${stay}hr, 備註: ${note})
+            與目前行程順序 (${currentCards})，決定最順路的插入位置並重新輸出該天完整的 cards 陣列 JSON。
+            必須包含必要的 type: transport 卡片。
+            JSON 格式規範：[{"type":"spot/transport", "name":"...", "desc":"...", "stay":1.5, "visited":false, "mode":"火車", "route":"...", "time":"...", "map":"導航連結"}]`;
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
                     method: 'POST',
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: "執行導航級智慧加點並重新排序" }] }],
-                        systemInstruction: { parts: [{ text: systemPrompt }] },
-                        generationConfig: { responseMimeType: "application/json" }
-                    })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" }})
                 });
+                const result = await res.json();
+                const newCards = JSON.parse(result.candidates[0].content.parts[0].text);
                 
-                const result = await response.json();
-                const updatedCards = JSON.parse(result.candidates[0].content.parts[0].text);
+                // 找到新景點填入圖片
+                newCards.forEach(c => { if(c.type === 'spot' && !c.img && uploadedImgB64) c.img = uploadedImgB64; });
                 
-                updatedCards.forEach(c => { if(c.type === 'spot' && !c.img && uploadedImageBase64) c.img = uploadedImageBase64; });
-
-                targetDay.cards = updatedCards;
-                document.getElementById('save-btn').classList.remove('hidden'); 
-                closeAIModal(); currentDay = dayNum; renderNavBar(); renderContent();
-            } catch (e) { statusDiv.innerText = "規劃失敗：" + e.message; statusDiv.style.display = 'block'; } 
-            finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic mr-3"></i>開始導航路徑分析'; }
+                dayData.cards = newCards;
+                localData.config.apiKey = key;
+                document.getElementById('save-btn').classList.remove('hidden');
+                closeAIModal(); renderAll();
+            } catch (e) { alert("規劃失敗：" + e.message); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic"></i> 開始智慧規劃路徑'; }
         };
 
-        document.getElementById('edit-toggle').onclick = () => { isEditMode = !isEditMode; document.getElementById('edit-toggle').classList.toggle('text-red-500'); renderContent(); };
+        const updateTotalTime = (day) => {
+            let totalMin = 0;
+            day.cards.forEach(c => {
+                if(c.type === 'transport' && c.time) {
+                    const match = c.time.match(/(\d+\.?\d*)/);
+                    if(match) totalMin += c.time.includes('hr') ? match[0] * 60 : parseInt(match[0]);
+                }
+            });
+            document.getElementById('total-travel-time').innerText = `總路程約: ${Math.floor(totalMin/60)}H ${totalMin%60}M`;
+        };
+
+        document.getElementById('edit-mode-toggle').onclick = () => {
+            isEditMode = !isEditMode;
+            document.getElementById('edit-mode-toggle').classList.toggle('text-emerald-500');
+            document.getElementById('add-smart-btn').classList.toggle('hidden');
+            renderAll();
+        };
+
+        document.getElementById('add-smart-btn').onclick = openAIModal;
+
         document.getElementById('save-btn').onclick = async () => {
             if(!window.db) return;
-            try {
-                const docPath = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
-                await setDoc(docPath, localData);
-                document.getElementById('save-btn').classList.add('hidden'); isEditMode = false; renderContent();
-            } catch (e) { console.error(e); }
+            await setDoc(doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master'), localData);
+            document.getElementById('save-btn').classList.add('hidden');
+            alert("同步雲端成功！");
         };
-
-        const loadData = () => {
-            if (window.db) {
-                const docPath = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
-                onSnapshot(docPath, (doc) => { if (doc.exists()) localData = doc.data(); renderNavBar(); renderContent(); });
-            } else { renderNavBar(); renderContent(); }
-        };
-
-        window.addEventListener('firebase-ready', loadData);
-        window.addEventListener('firebase-error', loadData);
-        setTimeout(() => { if(document.getElementById('itinerary-content').innerText.includes('同步')) loadData(); }, 3000);
     </script>
-    <style> .fade-in { animation: fadeIn 0.8s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } </style>
 </body>
 </html>
