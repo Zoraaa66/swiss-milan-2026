@@ -43,20 +43,20 @@
         body { background-color: var(--bg-base); color: #3D3D3D; font-family: 'Noto Sans TC', sans-serif; -webkit-font-smoothing: antialiased; font-size: 16px; }
         .serif { font-family: 'Noto Serif TC', serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .card { background: white; border-radius: 24px; width: 100%; margin-bottom: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid rgba(230, 225, 218, 0.6); position: relative; }
+        .card { background: white; border-radius: 24px; width: 100%; margin-bottom: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid rgba(230, 225, 218, 0.6); position: relative; }
         .transport-card { background: #F8FAFC; border: 1.5px dashed var(--accent-transport); }
         .spot-card { border-bottom: 5px solid var(--accent-spot); }
         .hotel-card { border-left: 8px solid var(--accent-hotel); }
         .arrow-divider { display: flex; justify-content: center; align-items: center; height: 40px; color: #E2E8F0; font-size: 1.5rem; }
-        .day-btn { flex: 0 0 auto; width: 70px; height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; transition: all 0.3s; background: transparent; }
+        .day-btn { flex: 0 0 auto; width: 70px; height: 95px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; transition: all 0.3s; background: transparent; }
         .day-btn.active { background: white; box-shadow: 0 6px 15px rgba(0,0,0,0.08); color: var(--accent-transport); transform: translateY(-3px); border: 1px solid #E2E8F0; }
         .step-list-item { position: relative; padding-left: 32px; border-left: 2px solid #CBD5E1; margin-left: 10px; margin-bottom: 16px; }
         .step-list-item::before { content: ''; position: absolute; left: -6px; top: 8px; width: 10px; height: 10px; background: var(--accent-transport); border-radius: 50%; }
         .nav-link-btn { color: var(--accent-transport); font-size: 0.9rem; font-weight: 700; background: #EFF6FF; padding: 4px 12px; border-radius: 10px; }
-        .ai-loading { animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .btn-add { background: #F1F5F9; color: #64748B; width: 100%; padding: 12px; border-radius: 16px; border: 2px dashed #CBD5E1; font-weight: bold; margin: 10px 0; }
+        .btn-add { background: #F8FAFC; color: #94A3B8; width: 100%; padding: 12px; border-radius: 16px; border: 2px dashed #E2E8F0; font-weight: bold; margin: 10px 0; font-size: 14px; }
         input, textarea, select { background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 10px; width: 100%; font-size: 15px; margin-bottom: 10px; }
+        .text-detail { font-size: 15px; line-height: 1.6; }
+        .text-title { font-size: 22px; font-weight: 700; }
     </style>
 </head>
 <body class="max-w-md mx-auto min-h-screen pb-24">
@@ -90,17 +90,17 @@
             <p class="text-slate-400 text-sm mb-6">輸入目的地，系統將自動評估路線與交通。</p>
             
             <label class="text-xs font-bold text-slate-400 uppercase">目的地名稱</label>
-            <input type="text" id="ai-dest" placeholder="例如：格林德瓦、10 Corso Como...">
+            <input type="text" id="ai-dest" placeholder="例如：龍疆湖, Spiez Castle...">
             
-            <label class="text-xs font-bold text-slate-400 uppercase">行程細節/備註 (選填)</label>
-            <textarea id="ai-notes" rows="3" placeholder="想在此做什麼？例如：拍照、喝咖啡..."></textarea>
+            <label class="text-xs font-bold text-slate-400 uppercase">備註 (例如：想去拍倒影)</label>
+            <textarea id="ai-notes" rows="2" placeholder="AI 會根據備註調整建議"></textarea>
 
-            <label class="text-xs font-bold text-slate-400 uppercase">參考照片網址 (選填)</label>
+            <label class="text-xs font-bold text-slate-400 uppercase">參考照片連結 (選填)</label>
             <input type="text" id="ai-img" placeholder="https://...">
 
-            <div class="flex gap-3 mt-6">
-                <button onclick="closeAIModal()" class="flex-1 bg-slate-100 py-4 rounded-2xl font-bold text-slate-500">取消</button>
-                <button id="ai-submit-btn" onclick="processAIPlanning()" class="flex-2 bg-emerald-500 py-4 px-8 rounded-2xl font-bold text-white shadow-lg shadow-emerald-200">
+            <div class="flex gap-3 mt-4">
+                <button onclick="closeAIModal()" class="flex-1 bg-slate-100 py-3 rounded-xl font-bold text-slate-500">取消</button>
+                <button id="ai-submit-btn" onclick="processAIPlanning()" class="flex-2 bg-emerald-500 py-3 px-6 rounded-xl font-bold text-white shadow-lg shadow-emerald-200">
                     <i class="fas fa-magic mr-2"></i>開始規劃
                 </button>
             </div>
@@ -115,8 +115,7 @@
     <script type="module">
         import { doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Gemini API 使用規則
-        const apiKey = ""; // 執行環境將提供 Key
+        const apiKey = ""; 
         const retryWithBackoff = async (fn, retries = 5, delay = 1000) => {
             try { return await fn(); }
             catch (e) {
@@ -130,8 +129,82 @@
             days: [
                 { day: 1, date: "3/18", weekday: "WED", title: "入境蘇黎世 ➔ 因特拉肯", cards: [
                     { type: "hotel", name: "蘇黎世機場 (ZRH)", desc: "12:25 落地。啟動 Swiss Pass。", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563" },
-                    { type: "transport", name: "鐵路路程", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95", steps: [{mode: "火車", route: "ZRH ➔ Interlaken", time: "2h"}], detail: "建議搭乘景觀段。" },
-                    { type: "spot", name: "因特拉肯東站", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793", desc: "入飯店放行李。晚上草地散步。" }
+                    { type: "transport", name: "前往因特拉肯", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95", steps: [{mode: "火車", route: "ZRH ➔ Bern ➔ Interlaken Ost", time: "2h"}], detail: "建議經由盧塞恩轉車欣賞龍疆湖景。" },
+                    { type: "spot", name: "因特拉肯小鎮", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793", desc: "入飯店放行李。晚上草地散步。" },
+                    { type: "hotel", name: "住：因特拉肯飯店", desc: "首晚入住。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                ]},
+                { day: 2, date: "3/19", weekday: "THU", title: "少女峰：歐洲之巔", cards: [
+                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "準備保暖衣物。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
+                    { type: "transport", name: "少女峰登山路程", img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c", steps: [{mode: "火車 R61", route: "東站 ➔ Terminal", time: "35m"}, {mode: "纜車", route: "Eiger Express", time: "15m"}, {mode: "齒軌火車", route: "艾格冰河 ➔ 少女峰站", time: "25m"}], detail: "持 STP 享購票優惠。" },
+                    { type: "spot", name: "斯芬克斯觀景台", img: "https://images.unsplash.com/photo-1541410965313-d53b3c16ef17", desc: "11:00-14:00 拍阿萊奇冰川的最佳制高點。" },
+                    { type: "spot", name: "冰原平台 Plateau", img: "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f", desc: "與瑞士國旗合照。" },
+                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "回飯店休息。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                ]},
+                { day: 3, date: "3/20", weekday: "FRI", title: "First 倒影 ➔ 盧達本納", cards: [
+                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "今日健行日。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
+                    { type: "transport", name: "前往 First", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48", steps: [{mode: "火車", route: "Interlaken ➔ Grindelwald", time: "35m"}, {mode: "纜車", route: "Grindelwald ➔ First", time: "25m"}], detail: "步行至巴哈阿爾普湖約 40 分鐘。" },
+                    { type: "spot", name: "巴哈阿爾普湖 Bachalpsee", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b", desc: "著名倒影湖拍攝點。" },
+                    { type: "spot", name: "盧達本納瀑布谷", img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4", desc: "15:30-17:30 拍 Staubbach Falls 逆光。" },
+                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "休息。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                ]},
+                { day: 4, date: "3/21", weekday: "SAT", title: "米倫 ➔ 雪朗峰 Schilthorn", cards: [
+                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "檢查天氣再出發。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
+                    { type: "transport", name: "纜車轉乘路程", img: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1", steps: [{mode: "火車", route: "Interlaken ➔ Lauterbrunnen", time: "20m"}, {mode: "纜車", route: "至 Murren", time: "25m"}], detail: "Murren 是個絕美小村莊。" },
+                    { type: "spot", name: "雪朗峰頂", img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c", desc: "360度看三姊妹峰。" },
+                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "飯店休息。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                ]},
+                { day: 5, date: "3/22", weekday: "SUN", title: "施皮茨 ➔ 森林藍湖", cards: [
+                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "悠閒週日。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
+                    { type: "spot", name: "施皮茨城堡 Spiez", img: "https://images.unsplash.com/photo-1590494165264-1ebe3602eb80", desc: "10:00-12:00 拍城堡湖景。" },
+                    { type: "transport", name: "前往藍湖", img: "https://images.unsplash.com/photo-1627662056263-d73197607a7f", steps: [{mode: "火車+公車", route: "Spiez ➔ Frutigen ➔ Blausee", time: "40m"}], detail: "藍湖水質呈現翡翠藍。" },
+                    { type: "spot", name: "藍湖 Blausee", img: "https://images.unsplash.com/photo-1627662056263-d73197607a7f", desc: "森林中的寶石湖泊。" },
+                    { type: "hotel", name: "終點：因特拉肯飯店", desc: "入住最後一晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                ]},
+                { day: 6, date: "3/23", weekday: "MON", title: "移動：米蘭跨國日", cards: [
+                    { type: "hotel", name: "退房：因特拉肯飯店", desc: "移動到義大利。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
+                    { type: "transport", name: "跨國火車路程", img: "https://images.unsplash.com/photo-1528150177508-7cc0c36cda5c", steps: [{mode: "火車", route: "Interlaken ➔ Spiez", time: "20m"}, {mode: "火車 EC", route: "Spiez ➔ Milano Centrale", time: "3.5h"}], detail: "EC 需要事先劃位。" },
+                    { type: "spot", name: "米蘭市區散步", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001", desc: "下午自由逛街。" },
+                    { type: "hotel", name: "住：米蘭飯店", desc: "連住 2 晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                ]},
+                { day: 7, date: "3/24", weekday: "TUE", title: "米蘭市區深度遊", cards: [
+                    { type: "hotel", name: "起點：米蘭飯店", desc: "早起避開觀光客。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
+                    { type: "spot", name: "米蘭主教座堂 Duomo", img: "https://images.unsplash.com/photo-1528150177508-7cc0c36cda5c", desc: "下午廣場光線最好，可登頂看尖塔。" },
+                    { type: "spot", name: "埃馬努埃萊二世長廊", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001", desc: "精品逛街與踩牛鈴好運。" },
+                    { type: "hotel", name: "終點：米蘭飯店", desc: "去 Mercato 吃飯。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
+                ]},
+                { day: 8, date: "3/25", weekday: "WED", title: "米蘭 ➔ 策馬特移動", cards: [
+                    { type: "hotel", name: "起點：米蘭飯店", desc: "準備進入山城。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" },
+                    { type: "spot", name: "運河區 Naviglio Grande", img: "https://images.unsplash.com/photo-1605151540700-0e104085600c", desc: "上午運河區拍照。" },
+                    { type: "transport", name: "前往策馬特", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793", steps: [{mode: "火車", route: "Milano ➔ Visp ➔ Zermatt", time: "3.5h"}], detail: "進入策馬特需搭紅綠色接駁車。" },
+                    { type: "hotel", name: "住：策馬特飯店", desc: "連住 5 晚。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" }
+                ]},
+                { day: 9, date: "3/26", weekday: "THU", title: "策馬特小鎮攝影日", cards: [
+                    { type: "hotel", name: "起點：策馬特飯店", desc: "攝影愛好者日。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" },
+                    { type: "spot", name: "Kirchbrücke 橋 (日出)", img: "https://images.unsplash.com/photo-1536431311719-398b6704d4cc", desc: "拍黃金馬特洪峰經典點。" },
+                    { type: "spot", name: "Hinterdorf 老村", img: "https://images.unsplash.com/photo-1541410965313-d53b3c16ef17", desc: "百年木屋與山峰同框。" },
+                    { type: "hotel", name: "終點：策馬特飯店", desc: "看星空馬特洪峰。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" }
+                ]},
+                { day: 10, date: "3/27", weekday: "FRI", title: "Gornergrat ➔ 倒影湖", cards: [
+                    { type: "hotel", name: "起點：策馬特飯店", desc: "看天氣出發。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" },
+                    { type: "transport", name: "登山火車路線", img: "https://images.unsplash.com/photo-1538330621152-478f3d057e90", steps: [{mode: "火車 (GGB)", route: "Zermatt ➔ Gornergrat", time: "35m"}], detail: "上山坐右側。" },
+                    { type: "spot", name: "Riffelsee 倒影湖", img: "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f", desc: "Rotenboden 下車走 10 分鐘。" },
+                    { type: "hotel", name: "終點：策馬特飯店", desc: "休息。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" }
+                ]},
+                { day: 11, date: "3/28", weekday: "SAT", title: "五湖路線 ➔ 芬德倫村", cards: [
+                    { type: "hotel", name: "起點：策馬特飯店", desc: "輕鬆健行日。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" },
+                    { type: "transport", name: "纜車路線", img: "https://images.unsplash.com/photo-1517400508447-f8dd518b86db", steps: [{mode: "地底纜車", route: "至 Sunnegga", time: "5m"}, {mode: "纜車", route: "至 Blauherd", time: "10m"}], detail: "步行至 Findeln 約 40 分鐘。" },
+                    { type: "spot", name: "Findeln 山中餐館", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793", desc: "馬特洪峰第一排景觀位。" },
+                    { type: "hotel", name: "終點：策馬特飯店", desc: "最後兩晚。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" }
+                ]},
+                { day: 12, date: "3/29", weekday: "SUN", title: "策馬特備用日", cards: [
+                    { type: "hotel", name: "起點：策馬特飯店", desc: "補拍或放空日。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" },
+                    { type: "spot", name: "小鎮購物 / 咖啡廳", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793", desc: "買 Läderach 巧克力。" },
+                    { type: "hotel", name: "終點：策馬特飯店", desc: "收行李準備返程。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" }
+                ]},
+                { day: 13, date: "3/30", weekday: "MON", title: "策馬特 ➔ 機場 ➔ 賦歸", cards: [
+                    { type: "hotel", name: "退房：策馬特飯店", desc: "08:00 前出發。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" },
+                    { type: "transport", name: "返程路程", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563", steps: [{mode: "火車", route: "Zermatt ➔ Zurich Airport", time: "4h"}], detail: "下午航班，時間充裕。" },
+                    { type: "hotel", name: "桃園機場 (3/31)", desc: "16:10 抵達台。旅程結束。", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563" }
                 ]}
             ]
         };
@@ -190,7 +263,7 @@
                         </div>`;
                 } else if (card.type === 'transport') {
                     cardHtml = `<div class="card transport-card shadow-sm p-6">
-                            <div class="flex items-center gap-2 mb-4 text-xs font-black text-slate-500 uppercase tracking-widest"><i class="fas fa-route text-blue-500"></i>Route Log</div>
+                            <div class="flex items-center gap-2 mb-4 text-xs font-black text-slate-500 uppercase tracking-widest"><i class="fas fa-route text-blue-500"></i>Journey Log</div>
                             <div class="space-y-4 mb-4">
                                 ${card.steps.map(s => `
                                     <div class="step-list-item">
@@ -211,8 +284,6 @@
                 }
 
                 html += cardHtml;
-                
-                // 編輯模式下的新增按鈕
                 if (isEditMode) {
                     html += `<button onclick="openAIModal(${idx})" class="btn-add"><i class="fas fa-plus-circle mr-2"></i>在此之後新增 AI 規劃點</button>`;
                 }
@@ -220,47 +291,24 @@
             container.innerHTML = html;
         };
 
-        // AI 規劃邏輯
-        window.openAIModal = (idx) => {
-            insertIndex = idx;
-            document.getElementById('ai-modal').classList.remove('hidden');
-        };
-
-        window.closeAIModal = () => {
-            document.getElementById('ai-modal').classList.add('hidden');
-        };
+        window.openAIModal = (idx) => { insertIndex = idx; document.getElementById('ai-modal').classList.remove('hidden'); };
+        window.closeAIModal = () => { document.getElementById('ai-modal').classList.add('hidden'); };
 
         window.processAIPlanning = async () => {
             const dest = document.getElementById('ai-dest').value;
             const notes = document.getElementById('ai-notes').value;
             const imgUrl = document.getElementById('ai-img').value || "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1";
-            
             if (!dest) { alert("請輸入目的地"); return; }
             
             const btn = document.getElementById('ai-submit-btn');
             btn.disabled = true;
-            btn.classList.add('ai-loading');
             btn.innerHTML = '<i class="fas fa-spinner animate-spin mr-2"></i>AI 導遊規劃中...';
 
             const currentDayObj = localData.days.find(d => d.day === currentDay);
             const prevSpot = currentDayObj.cards[insertIndex].name;
 
-            const systemPrompt = `你是一位專業的瑞士旅遊導遊。
-            請根據使用者想去的新景點，規劃從「${prevSpot}」出發的交通與描述。
-            請務必回傳 JSON 格式，結構如下：
-            {
-                "transport": {
-                    "steps": [{"mode": "交通工具名稱", "route": "路線描述", "time": "預估時間"}],
-                    "detail": "一段詳細的搭乘建議與轉乘備註"
-                },
-                "spot": {
-                    "name": "地點名稱",
-                    "desc": "一段吸引人的景點描述，包含攝影熱門點建議與提醒"
-                }
-            }
-            請確保交通工具包含 火車、纜車 或 步行。`;
-
-            const userPrompt = `新增景點：${dest}。使用者備註：${notes}`;
+            const systemPrompt = `你是一位專業的瑞士旅遊導遊。請根據使用者想去的新景點，規劃從「${prevSpot}」出發的交通工具(火車/纜車/步行)與描述。請務必回傳 JSON 格式。`;
+            const userPrompt = `從 ${prevSpot} 前往景點：${dest}。備註：${notes}`;
 
             try {
                 const response = await retryWithBackoff(() => fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
@@ -274,53 +322,25 @@
                 const result = await response.json();
                 const aiResult = JSON.parse(result.candidates[0].content.parts[0].text);
 
-                // 構建新卡片
-                const newTransportCard = {
-                    type: "transport",
-                    name: `前往 ${aiResult.spot.name}`,
-                    img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c",
-                    steps: aiResult.transport.steps,
-                    detail: aiResult.transport.detail
-                };
-
-                const newSpotCard = {
-                    type: "spot",
-                    name: aiResult.spot.name,
-                    desc: aiResult.spot.desc,
-                    img: imgUrl
-                };
-
-                // 插入數據
-                currentDayObj.cards.splice(insertIndex + 1, 0, newTransportCard, newSpotCard);
+                currentDayObj.cards.splice(insertIndex + 1, 0, 
+                    { type: "transport", name: `前往 ${aiResult.spot.name}`, img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c", steps: aiResult.transport.steps, detail: aiResult.transport.detail },
+                    { type: "spot", name: aiResult.spot.name, desc: aiResult.spot.desc, img: imgUrl }
+                );
                 
                 document.getElementById('save-btn').classList.remove('hidden');
                 closeAIModal();
                 renderContent();
-            } catch (e) {
-                console.error(e);
-                alert("AI 規劃失敗，請檢查網路後重試。");
-            } finally {
-                btn.disabled = false;
-                btn.classList.remove('ai-loading');
-                btn.innerHTML = '<i class="fas fa-magic mr-2"></i>開始規劃';
-            }
+            } catch (e) { alert("AI 規劃失敗，請手動調整。"); }
+            finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic mr-2"></i>開始規劃'; }
         };
 
-        document.getElementById('edit-toggle').onclick = () => {
-            isEditMode = !isEditMode;
-            document.getElementById('edit-toggle').classList.toggle('text-emerald-500');
-            renderContent();
-        };
-
+        document.getElementById('edit-toggle').onclick = () => { isEditMode = !isEditMode; document.getElementById('edit-toggle').classList.toggle('text-emerald-500'); renderContent(); };
         document.getElementById('save-btn').onclick = async () => {
-            if(!window.db) { alert("尚未設定雲端儲存。"); return; }
-            try {
-                const docPath = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
-                await setDoc(docPath, localData);
-                document.getElementById('save-btn').classList.add('hidden');
-                isEditMode = false;
-                renderContent();
-            } catch (e) { console.error(e); }
+            const docPath = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
+            await setDoc(docPath, localData);
+            document.getElementById('save-btn').classList.add('hidden');
+            isEditMode = false;
+            renderContent();
         };
 
         const loadData = () => {
@@ -329,7 +349,7 @@
                 onSnapshot(docPath, (doc) => {
                     if (doc.exists()) { localData = doc.data(); }
                     renderNavBar(); renderContent();
-                }, (err) => { renderNavBar(); renderContent(); });
+                });
             } else { renderNavBar(); renderContent(); }
         };
 
