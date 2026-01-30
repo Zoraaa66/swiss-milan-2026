@@ -1,510 +1,459 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Archive 2026 | 瑞士米蘭智慧導覽</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import React, { useState, useEffect, useMemo } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, collection, doc, onSnapshot, 
+  addDoc, updateDoc, query, deleteDoc 
+} from 'firebase/firestore';
+import { 
+  getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken 
+} from 'firebase/auth';
+import { 
+  Calendar, Clock, Plus, Utensils, Home, Camera, 
+  CreditCard, CheckSquare, ChevronRight, Navigation, 
+  Check, Plane, Info, Search, Map as MapIcon, Ship, Car, 
+  Trash2, TrainFront, Mountain, Image as ImageIcon,
+  ArrowRight, Bus, TramFront, Wallet, TrendingUp, ExternalLink, MapPin
+} from 'lucide-react';
 
-        let firebaseConfig;
-        try { firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null; } catch (e) {}
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-milan-2026';
-        
-        if (firebaseConfig) {
-            const app = initializeApp(firebaseConfig);
-            window.auth = getAuth(app);
-            window.db = getFirestore(app);
-            window.appId = appId;
-            const initAuth = async () => {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(window.auth, __initial_auth_token);
-                } else { await signInAnonymously(window.auth); }
-            };
-            initAuth();
-            onAuthStateChanged(window.auth, (user) => {
-                if (user) { window.userId = user.uid; window.dispatchEvent(new CustomEvent('auth-ready')); }
-            });
-        }
-    </script>
+// --- Firebase 配置 ---
+const firebaseConfig = typeof __firebase_config !== 'undefined' 
+  ? JSON.parse(__firebase_config) 
+  : { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600&family=JetBrains+Mono:wght@500&display=swap');
-        :root { --main-red: #FF6B6B; --bg-light: #F8FAFC; }
-        body { background-color: var(--bg-light); color: #334155; font-family: 'Noto Sans TC', sans-serif; -webkit-font-smoothing: antialiased; }
-        .serif { font-family: 'Noto Serif TC', serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        /* 頁面切換 */
-        .page { display: none; }
-        .page.active { display: block; animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'switzerland-trip-2026';
 
-        /* 24小時時間軸 (附件一風格) */
-        .timeline-ruler { width: 60px; border-right: 1px solid #E2E8F0; padding-right: 10px; flex-shrink: 0; }
-        .hour-tick { height: 60px; font-size: 11px; color: #94A3B8; display: flex; align-items: flex-start; justify-content: flex-end; position: relative; font-family: 'JetBrains Mono', monospace; }
-        .hour-tick::after { content: ''; position: absolute; right: -6px; top: 8px; width: 10px; height: 1px; background: #E2E8F0; }
-        
-        /* 行程卡片 */
-        .itinerary-item { position: absolute; left: 70px; right: 0; background: white; border-radius: 16px; padding: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1.5px solid #F1F5F9; transition: 0.3s; overflow: hidden; }
-        .itinerary-item.visited { background: #F8FAFC; opacity: 0.7; }
-        .itinerary-item.transport { background: #EFF6FF; border-color: #DBEAFE; border-left: 4px solid #3B82F6; }
+// --- 常量與配色 ---
+const CATEGORY_COLORS = {
+  spot: 'bg-journal-green',
+  food: 'bg-journal-red',
+  transport: 'bg-journal-blue',
+  hotel: 'bg-orange-200',
+  flight: 'bg-red-400',
+};
 
-        /* 路線圖卡片 (附件二風格) */
-        .route-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; position: relative; box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
-        .route-dash-line { position: absolute; left: 24px; top: 40px; bottom: -20px; width: 3px; border-left: 2px dashed var(--main-red); }
-        .route-icon-box { width: 22px; height: 22px; background: white; border: 2px solid var(--main-red); border-radius: 50%; z-index: 2; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .view-map-btn { font-size: 11px; font-weight: 900; color: #10b981; border: 1px solid #10b981; border-radius: 8px; padding: 4px 8px; display: flex; align-items: center; gap: 4px; }
+const CATEGORY_LABELS = {
+  spot: '景點',
+  food: '美食',
+  transport: '交通',
+  hotel: '住宿',
+  flight: '航班'
+};
 
-        /* 底部導覽 */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #E2E8F0; display: flex; padding: 12px 0; z-index: 100; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 900; color: #94A3B8; }
-        .nav-item.active { color: var(--main-red); }
-        .nav-item i { font-size: 20px; margin-bottom: 4px; }
+const SWISS_DAYS = [
+  { id: '2026-03-18', label: 'Day 1', date: '3/18' },
+  { id: '2026-03-19', label: 'Day 2', date: '3/19' },
+  { id: '2026-03-20', label: 'Day 3', date: '3/20' },
+  { id: '2026-03-21', label: 'Day 4', date: '3/21' },
+  { id: '2026-03-22', label: 'Day 5', date: '3/22' },
+  { id: '2026-03-23', label: 'Day 6', date: '3/23' },
+  { id: '2026-03-24', label: 'Day 7', date: '3/24' },
+  { id: '2026-03-25', label: 'Day 8', date: '3/25' },
+  { id: '2026-03-26', label: 'Day 9', date: '3/26' },
+  { id: '2026-03-27', label: 'Day 10', date: '3/27' },
+  { id: '2026-03-28', label: 'Day 11', date: '3/28' },
+  { id: '2026-03-29', label: 'Day 12', date: '3/29' },
+  { id: '2026-03-30', label: 'Day 13', date: '3/30' },
+  { id: '2026-03-31', label: 'Day 14', date: '3/31' },
+];
 
-        /* 通用按鈕 */
-        .btn-circle { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .btn-primary { background: var(--main-red); color: white; box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3); }
+// --- UI 組件 ---
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-white rounded-[1.5rem] shadow-[4px_4px_0px_#E0E5D5] border-2 border-[#E0E5D5] p-4 transition-transform active:scale-[0.98] ${className}`}>
+    {children}
+  </div>
+);
 
-        .details-panel { display: none; }
-        .details-panel.show { display: block; animation: slideDown 0.3s ease-out; }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
-</head>
-<body class="max-w-md mx-auto min-h-screen">
-
-    <!-- Header -->
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 px-6 py-5 border-b border-slate-100">
-        <div class="flex justify-between items-center mb-5">
-            <div>
-                <h1 class="text-2xl font-black italic tracking-tighter text-slate-800">Archive 2026.</h1>
-                <div id="weather-box" class="flex items-center gap-3 text-[11px] font-bold text-slate-400 mt-1">
-                    <!-- 氣象由 JS 更新 -->
-                </div>
-            </div>
-            <button id="edit-mode-toggle" class="bg-slate-100 w-12 h-12 rounded-2xl flex items-center justify-center text-slate-400 transition hover:bg-slate-200">
-                <i class="fas fa-pen-nib"></i>
-            </button>
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-[#F7F4EB] w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl animate-in slide-in-from-bottom-10 overflow-y-auto max-h-[90vh]">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-[#555]">{title}</h2>
+          <button onClick={onClose} className="p-2 bg-white rounded-full shadow-sm text-gray-400 transition-colors hover:bg-gray-50">✕</button>
         </div>
-        <div id="day-navbar" class="flex overflow-x-auto no-scrollbar gap-3 pb-1"></div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="pb-32">
-        
-        <!-- Tab 1: 24h 詳細行程 (附件一風格) -->
-        <section id="page-itinerary" class="page active">
-            <div class="px-6 mb-4 flex justify-between items-center">
-                <div class="bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-100">
-                    <span class="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1">Departure Time</span>
-                    <input type="time" id="departure-input" class="text-xl font-black bg-transparent border-none p-0 focus:ring-0 text-slate-700">
-                </div>
-                <div class="text-right">
-                    <p id="total-info" class="text-[11px] font-black text-blue-500 bg-blue-50 px-4 py-2 rounded-xl">計算中...</p>
-                </div>
-            </div>
-
-            <div class="flex px-4 relative mt-6" id="timeline-scroll-area">
-                <!-- 24小時導軌 -->
-                <div id="timeline-ruler" class="timeline-ruler"></div>
-                <!-- 行程物件容器 -->
-                <div id="itinerary-objects" class="flex-1 relative" style="height: 1440px;"></div>
-            </div>
-        </section>
-
-        <!-- Tab 2: 路線圖總表 (附件二風格) -->
-        <section id="page-route" class="page px-6 pt-4">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-black italic serif">Route Map</h2>
-                <span class="text-[10px] bg-slate-100 px-3 py-1 rounded-full font-black text-slate-400">STEP BY STEP</span>
-            </div>
-            <div id="route-list-container">
-                <!-- 由附件二樣式生成的路線列表 -->
-            </div>
-        </section>
-
-        <!-- Tab 3: 費用紀錄 -->
-        <section id="page-finance" class="page px-6 pt-4">
-            <div class="flex justify-between items-end mb-8">
-                <div>
-                    <h2 class="text-2xl font-black italic serif">Financial Logs</h2>
-                    <p class="text-[11px] font-bold text-slate-400">PER USER SETTLEMENT</p>
-                </div>
-                <div class="text-right bg-white p-3 rounded-2xl border border-slate-100">
-                    <p class="text-[10px] font-black text-slate-400">TOTAL</p>
-                    <p id="grand-total" class="text-lg font-black text-slate-800">CHF 0.00</p>
-                </div>
-            </div>
-
-            <div id="expense-form" class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 mb-8">
-                <div class="grid grid-cols-2 gap-3 mb-3">
-                    <input type="text" id="exp-name" placeholder="項目名稱" class="col-span-2">
-                    <input type="number" id="exp-amount" placeholder="金額 (CHF)">
-                    <select id="exp-payer">
-                        <option value="A">User A</option>
-                        <option value="B">User B</option>
-                    </select>
-                </div>
-                <button onclick="addExpense()" class="w-full bg-slate-900 text-white py-4 rounded-xl font-black shadow-lg">RECORD LOG</button>
-            </div>
-
-            <div id="expense-history" class="space-y-4"></div>
-        </section>
-
-        <!-- Tab 4: 準備清單 -->
-        <section id="page-checklist" class="page px-6 pt-4">
-            <div id="prep-alert" class="hidden bg-orange-400 text-white p-6 rounded-3xl text-center font-black mb-8 shadow-xl shadow-orange-100 animate-bounce">
-                🎉 恭喜準備完成，旅遊愉快！
-            </div>
-            <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Daily Essentials</h3>
-            <div id="fixed-checks" class="space-y-3"></div>
-            
-            <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest mt-10 mb-4">Custom Items</h3>
-            <div id="custom-checks" class="space-y-3 mb-6"></div>
-            <div class="flex gap-2">
-                <input type="text" id="new-check" placeholder="新增事項..." class="flex-1">
-                <button onclick="addCheck()" class="bg-slate-800 text-white px-5 rounded-xl font-bold">ADD</button>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- Bottom Nav -->
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="switchTab('itinerary')"><i class="fas fa-clock"></i>詳細行程</button>
-        <button class="nav-item" onclick="switchTab('route')"><i class="fas fa-route"></i>路線圖</button>
-        <button class="nav-item" onclick="switchTab('finance')"><i class="fas fa-wallet"></i>花費</button>
-        <button class="nav-item" onclick="switchTab('checklist')"><i class="fas fa-clipboard-check"></i>準備</button>
-    </nav>
-
-    <!-- AI Smart Form -->
-    <div id="ai-modal" class="modal-bg">
-        <div class="modal-content shadow-2xl">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-black italic tracking-tighter">AI Smart Add.</h3>
-                <button onclick="closeAIModal()" class="text-slate-300"><i class="fas fa-times text-2xl"></i></button>
-            </div>
-            <label class="text-[11px] font-black text-slate-500 uppercase block mb-1">Google Map 分享網址</label>
-            <input type="text" id="ai-link" placeholder="貼上連結 (AI 將自動分析)">
-            
-            <label class="text-[11px] font-black text-slate-500 uppercase block mb-1">停留時間 (小時)</label>
-            <input type="number" id="ai-stay" value="1.5" step="0.5">
-            
-            <label class="text-[11px] font-black text-slate-500 uppercase block mb-1">備註/照片選填</label>
-            <textarea id="ai-notes" rows="2" placeholder="想要在此做什麼？"></textarea>
-            
-            <input type="file" id="ai-photo" accept=".jpg" class="hidden" onchange="handleFile(this)">
-            <button onclick="document.getElementById('ai-photo').click()" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold mb-4">上傳景點圖</button>
-
-            <label class="text-[11px] font-black text-blue-500 block mb-1">Gemini API Key</label>
-            <input type="password" id="user-key" placeholder="貼上 Key...">
-
-            <button id="ai-btn" onclick="runAISmartAdd()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black shadow-xl">開始智慧規劃並排程</button>
-        </div>
+        {children}
+      </div>
     </div>
+  );
+};
 
-    <!-- Save FAB -->
-    <button id="save-fab" class="hidden fixed bottom-24 right-6 bg-emerald-500 text-white w-14 h-14 rounded-full shadow-2xl z-[110] flex items-center justify-center text-2xl border-4 border-white">
-        <i class="fas fa-cloud-upload-alt"></i>
-    </button>
+export default function App() {
+  const [activeTab, setActiveTab] = useState('schedule');
+  const [selectedDay, setSelectedDay] = useState('2026-03-18');
+  const [user, setUser] = useState(null);
+  const [schedules, setSchedules] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [isAddingExpense, setIsAddingExpense] = useState(false);
 
-    <script type="module">
-        import { doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  // 匯率 (暫定 1 CHF = 36 TWD)
+  const EXCHANGE_RATE = 36.5;
 
-        // --- 核心數據 (全14天，完全同步附件資訊) ---
-        const defaultTripData = {
-            config: { apiKey: "", startTime: "08:00" },
-            days: [
-                { day: 1, date: "3/18", weekday: "WED", title: "台北 ➔ 蘇黎世 ➔ 因特拉肯", weather: { temp: "8~14°C", rain: "5%", vis: "良好", icon: "cloud-sun" }, cards: [
-                    { type: "spot", name: "蘇黎世機場 ZRH", desc: "領行李、換匯、啟動 Swiss Pass。", stay: 1.5, visited: false, map: "https://www.google.com/maps/search/Zurich+Airport" },
-                    { type: "transport", mode: "火車", route: "機場 ➔ 伯恩 ➔ 因特拉肯", time: 150, map: "https://www.google.com/maps/dir/Zurich+Airport/Interlaken+Ost" },
-                    { type: "spot", name: "因特拉肯飯店", desc: "飯店未訂。放行李、休息。", stay: 12, visited: false }
-                ]},
-                { day: 2, date: "3/19", weekday: "THU", title: "少女峰巔峰全覽", weather: { temp: "-5~2°C", rain: "0%", vis: "高山雲海", icon: "snowflake" }, cards: [
-                    { type: "spot", name: "因特拉肯東站", stay: 0.5, visited: false },
-                    { type: "transport", mode: "混合", route: "火車/快線/齒軌 ➔ 少女峰", time: 90 },
-                    { type: "spot", name: "少女峰 Jungfraujoch", desc: "斯芬克斯、阿萊奇冰川、冰原平台。", stay: 4, visited: false, map: "https://www.google.com/maps/search/Jungfraujoch" },
-                    { type: "spot", name: "住宿：因特拉肯", stay: 12, visited: false }
-                ]},
-                { day: 3, date: "3/20", weekday: "FRI", title: "First ＋ 盧達本納", weather: { temp: "5~11°C", rain: "10%", icon: "cloud" }, cards: [
-                    { type: "spot", name: "First 纜車站", stay: 1, visited: false },
-                    { type: "spot", name: "Bachalpsee 倒影湖", desc: "拍雪山倒影。健行40分。", stay: 2, visited: false },
-                    { type: "spot", name: "盧達本納 瀑布谷", desc: "15:30 拍 Staubbach 逆光。", stay: 2, visited: false, map: "https://www.google.com/maps/search/Lauterbrunnen" },
-                    { type: "spot", name: "住宿：因特拉肯", stay: 12, visited: false }
-                ]},
-                { day: 6, date: "3/23", weekday: "MON", title: "移動日 ➔ 米蘭", weather: { temp: "12~19°C", icon: "sun" }, cards: [
-                    { type: "transport", mode: "火車", route: "Interlaken ➔ Spiez", time: 20 },
-                    { type: "transport", mode: "火車 EC", route: "Spiez ➔ 米蘭中央車站", time: 210 },
-                    { type: "spot", name: "住宿：米蘭", desc: "自由活動、逛街。", stay: 12, visited: false }
-                ]}
-                // (其餘日期已按您的文字要求在底層代碼邏輯中補足)
-            ],
-            expenses: { A: [], B: [] },
-            checklist: { custom: [] }
-        };
+  // Firebase 初始化
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) { console.error("Auth failed:", err); }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return () => unsubscribe();
+  }, []);
 
-        const staticChecklist = ["護照", "信用卡", "錢", "手機", "行動電源", "常備藥", "衛生紙/濕紙巾"];
-        let currentDay = 1;
-        let isEditMode = false;
-        let localData = defaultTripData;
-        let b64Img = "";
+  useEffect(() => {
+    if (!user) return;
+    const scheduleRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedules');
+    const unsubSchedule = onSnapshot(scheduleRef, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setSchedules(data.sort((a, b) => a.time.localeCompare(b.time)));
+    });
 
-        // --- 初始化 ---
-        const setup = () => {
-            if (window.db) {
-                const docRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
-                onSnapshot(docRef, (snap) => {
-                    if (snap.exists()) localData = snap.data();
-                    refreshUI();
-                }, () => refreshUI());
-            } else refreshUI();
-        };
+    const expenseRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
+    const unsubExpense = onSnapshot(expenseRef, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setExpenses(data);
+    });
 
-        window.addEventListener('auth-ready', setup);
-        setTimeout(() => { if(!window.userId) refreshUI(); }, 2000);
+    return () => {
+      unsubSchedule();
+      unsubExpense();
+    };
+  }, [user]);
 
-        const refreshUI = () => {
-            renderDayTabs();
-            renderTimeline();
-            renderRouteMap();
-            renderExpenses();
-            renderChecks();
-            renderWeather();
-        };
+  const currentItems = useMemo(() => schedules.filter(s => s.date === selectedDay), [schedules, selectedDay]);
+  
+  const activeIndex = useMemo(() => {
+    const now = new Date();
+    const currentTimeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const idx = currentItems.findIndex(item => item.time > currentTimeStr);
+    return idx === -1 ? currentItems.length - 1 : Math.max(0, idx - 1);
+  }, [currentItems]);
 
-        // --- 24h 時間軸渲染 (附件一風格) ---
-        const renderTimeline = () => {
-            const dayData = localData.days.find(d => d.day === currentDay);
-            const ruler = document.getElementById('timeline-ruler');
-            const container = document.getElementById('itinerary-objects');
-            ruler.innerHTML = ''; container.innerHTML = '';
+  // 新增行程處理
+  const handleAddItem = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const newItem = {
+      date: selectedDay,
+      time: formData.get('time'),
+      title: formData.get('title'),
+      category: formData.get('category'),
+      note: formData.get('note'),
+      googleMapUrl: formData.get('googleMapUrl'),
+      duration: formData.get('duration') || '60',
+      // 分段導覽預設模擬，實務上可讓用戶編輯
+      legs: [
+        { mode: 'train', from: '起點站', to: '終點站', time: formData.get('duration') || '60' }
+      ]
+    };
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'schedules'), newItem);
+    setIsAddingItem(false);
+  };
 
-            // 生成24小時刻度
-            for(let i=0; i<24; i++) {
-                const tick = document.createElement('div');
-                tick.className = 'hour-tick';
-                tick.innerText = `${i.toString().padStart(2, '0')}:00`;
-                ruler.appendChild(tick);
-            }
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const amount = parseFloat(formData.get('amount'));
+    const newItem = {
+      title: formData.get('title'),
+      amount: amount,
+      currency: 'CHF',
+      category: formData.get('category'),
+      date: new Date().toISOString().split('T')[0]
+    };
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'expenses'), newItem);
+    setIsAddingExpense(false);
+  };
 
-            // 計算時間位置
-            let currentTime = dayData.startTime || localData.config.startTime;
-            let currentMinutes = parseInt(currentTime.split(':')[0]) * 60 + parseInt(currentTime.split(':')[1]);
+  const deleteItem = async (coll, id) => {
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', coll, id));
+  };
 
-            dayData.cards.forEach((card, idx) => {
-                const durationMinutes = card.type === 'spot' ? card.stay * 60 : (card.time || 30);
-                const topPos = (currentMinutes / 1440) * 1440; // 1分鐘 = 1px (高度1440)
-                const height = durationMinutes;
+  // --- 視圖組件 ---
 
-                const div = document.createElement('div');
-                div.className = `itinerary-item ${card.type === 'transport' ? 'transport' : ''} ${card.visited ? 'visited' : ''}`;
-                div.style.top = `${topPos}px`;
-                div.style.height = `${height}px`;
-                div.style.minHeight = card.type === 'spot' ? '80px' : '40px';
+  const TransportLeg = ({ mode, from, to, time }) => (
+    <div className="flex items-center gap-3 bg-[#F7F4EB] p-3 rounded-2xl border border-dashed border-[#E0D8C3] mb-2">
+      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-journal-blue shadow-sm">
+        {mode === 'train' ? <TrainFront size={16} /> : mode === 'bus' ? <Bus size={16} /> : mode === 'cable' ? <Mountain size={16} /> : <Plane size={16} />}
+      </div>
+      <div className="flex-1 flex items-center justify-between text-[11px] font-bold text-[#666]">
+        <div className="flex items-center gap-1">
+          <span className="text-journal-blue">{from}</span>
+          <ArrowRight size={10} className="text-gray-300" />
+          <span className="text-journal-green">{to}</span>
+        </div>
+        <span className="bg-white px-2 py-0.5 rounded-full shadow-xs">{time} 分</span>
+      </div>
+    </div>
+  );
 
-                const arrival = `${Math.floor(currentMinutes/60).toString().padStart(2,'0')}:${(currentMinutes%60).toString().padStart(2,'0')}`;
-                
-                div.innerHTML = `
-                    <div class="flex justify-between items-start" onclick="toggleDetails(${idx})">
-                        <div>
-                            <span class="text-[10px] font-black ${card.type==='transport'?'text-blue-500':'text-red-500'} uppercase">${arrival}</span>
-                            <h4 class="font-bold text-sm truncate">${card.name || card.route}</h4>
-                        </div>
-                        ${isEditMode ? `<button onclick="event.stopPropagation(); deleteCard(${idx})" class="text-slate-300"><i class="fas fa-times"></i></button>` : ''}
+  const ScheduleView = () => (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex gap-4 overflow-x-auto pb-6 no-scrollbar -mx-6 px-6">
+        {SWISS_DAYS.map((day) => (
+          <button 
+            key={day.id}
+            onClick={() => setSelectedDay(day.id)}
+            className={`flex-shrink-0 flex flex-col items-center justify-center min-w-[70px] h-[70px] rounded-[1.5rem] font-black transition-all border-2 ${
+              selectedDay === day.id ? 'bg-[#9BAEBC] text-white border-[#9BAEBC] shadow-lg scale-110' : 'bg-white text-gray-300 border-gray-50'
+            }`}
+          >
+            <span className="text-[10px] uppercase opacity-80">{day.label}</span>
+            <span className="text-sm tracking-tighter">{day.date}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="relative pl-14 space-y-12 mb-32">
+        <div className="absolute left-[1.6rem] top-2 bottom-2 w-1.5 bg-[#E0D8C3] rounded-full" />
+        
+        {currentItems.map((item, index) => (
+          <div key={item.id} className="relative">
+            <div className={`absolute -left-[3.15rem] top-1 z-10 w-12 h-12 rounded-full border-4 border-[#F7F4EB] flex items-center justify-center shadow-sm ${
+              index < activeIndex ? 'bg-journal-green' : index === activeIndex ? 'bg-[#9BAEBC] animate-bounce' : 'bg-[#E0D8C3]'
+            }`}>
+              {index < activeIndex ? <Check size={20} className="text-white" strokeWidth={4} /> : index === activeIndex ? <div className="text-2xl">🏃</div> : <div className="w-3 h-3 rounded-full bg-white/40" />}
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-base font-black text-[#9BAEBC]">{item.time}</span>
+                  <span className="text-[10px] bg-journal-sand/40 text-journal-green px-3 py-1 rounded-full font-black uppercase">總時程 {item.duration} min</span>
+                </div>
+                <button onClick={() => deleteItem('schedules', item.id)} className="text-gray-200 hover:text-red-300 transition-colors"><Trash2 size={16} /></button>
+              </div>
+              
+              <Card className="flex flex-col gap-4 relative overflow-hidden group">
+                <div className={`absolute top-0 right-0 w-2.5 h-full rounded-r-[1.3rem] ${CATEGORY_COLORS[item.category] || 'bg-gray-200'}`} />
+                <div className="pr-6">
+                  <h3 className="font-black text-xl text-[#555] flex items-center gap-2">
+                    {item.category === 'transport' && <TrainFront size={20} className="text-journal-blue" />}
+                    {item.category === 'flight' && <Plane size={20} className="text-red-400" />}
+                    {item.category === 'hotel' && <Home size={20} className="text-orange-300" />}
+                    {item.title}
+                  </h3>
+                  
+                  {/* 分段詳情 (如果有分段數據) */}
+                  {item.legs && item.legs.length > 0 && (
+                    <div className="mt-3 space-y-1">
+                      {item.legs.map((leg, lIdx) => (
+                        <TransportLeg key={lIdx} {...leg} />
+                      ))}
                     </div>
-                    <div id="card-detail-${idx}" class="details-panel mt-2 text-[11px] text-slate-500">
-                        ${card.img ? `<img src="${card.img}" class="w-full h-32 object-cover rounded-lg mb-2">` : ''}
-                        <p>${card.desc || ''}</p>
-                        ${card.map ? `<a href="${card.map}" target="_blank" class="mt-2 inline-block text-blue-500 font-bold underline">Google Map 導航</a>` : ''}
-                    </div>
-                `;
-                container.appendChild(div);
-                currentMinutes += durationMinutes;
-            });
-            document.getElementById('total-info').innerText = `總時長: ${Math.floor(currentMinutes/60)}H ${currentMinutes%60}M`;
-        };
+                  )}
 
-        // --- 路線圖渲染 (附件二風格) ---
-        const renderRouteMap = () => {
-            const list = document.getElementById('route-list-container');
-            const dayData = localData.days.find(d => d.day === currentDay);
-            list.innerHTML = '';
+                  <p className="text-xs text-gray-400 font-bold italic mt-2">"{item.note || '享受旅程...'}"</p>
+                </div>
 
-            dayData.cards.forEach((c, i) => {
-                if(c.type === 'spot') {
-                    const div = document.createElement('div');
-                    div.className = 'route-card';
-                    div.innerHTML = `
-                        <div class="route-dash-line"></div>
-                        <div class="route-icon-box"><i class="fas fa-map-pin text-[10px] text-red-500"></i></div>
-                        <div class="flex-1">
-                            <h4 class="font-black text-slate-800">${c.name}</h4>
-                            <div class="flex gap-2 mt-1">
-                                ${c.map ? `<a href="${c.map}" target="_blank" class="view-map-btn"><i class="fas fa-location-arrow"></i> View Map</a>` : ''}
-                                <span class="text-[10px] font-bold text-slate-400 self-center">STAY ${c.stay}H</span>
-                            </div>
-                        </div>
-                    `;
-                    list.appendChild(div);
-                } else {
-                    const div = document.createElement('div');
-                    div.className = 'route-card bg-blue-50/50 border-none ml-4';
-                    div.innerHTML = `
-                        <div class="route-icon-box border-blue-400 text-blue-400"><i class="fas fa-train text-[10px]"></i></div>
-                        <div class="flex-1 text-sm font-bold text-blue-600">${c.mode}: ${c.route} (${c.time}m)</div>
-                    `;
-                    list.appendChild(div);
-                }
-            });
-        };
+                <div className="flex gap-3 mt-1">
+                  {item.googleMapUrl && (
+                    <a href={item.googleMapUrl} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 text-xs bg-blue-50 text-blue-500 py-3 rounded-2xl font-black active:scale-95 transition-all shadow-sm">
+                      <MapIcon size={14} strokeWidth={3} /> 開啟 Google Maps
+                    </a>
+                  )}
+                  <button className="w-14 flex items-center justify-center bg-gray-50 text-gray-300 py-3 rounded-2xl active:scale-95 transition-all">
+                    <ImageIcon size={18} />
+                  </button>
+                </div>
+              </Card>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
-        // --- 功能模組 ---
-        window.switchTab = (t) => {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            document.getElementById(`page-${t}`).classList.add('active');
-            document.querySelector(`[onclick="switchTab('${t}')"]`).classList.add('active');
-        };
+  const ExpenseView = () => {
+    const totalCHF = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const totalTWD = totalCHF * EXCHANGE_RATE;
 
-        window.toggleDetails = (idx) => {
-            document.getElementById(`card-detail-${idx}`).classList.toggle('show');
-        };
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <Card className="bg-gradient-to-br from-[#9BAEBC] to-[#7a8c99] text-white py-8 px-6 flex flex-col items-center border-none shadow-xl">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80 mb-1">Total Trip Expense</p>
+          <p className="text-4xl font-black tracking-tighter mb-4">CHF {totalCHF.toLocaleString()}</p>
+          <div className="w-full h-px bg-white/20 mb-4" />
+          <div className="flex justify-between w-full text-sm font-bold opacity-90">
+            <span>估算台幣總額</span>
+            <span>≈ NT$ {totalTWD.toLocaleString()}</span>
+          </div>
+          <p className="text-[9px] mt-2 opacity-50 uppercase">Rate: 1 CHF = {EXCHANGE_RATE} TWD</p>
+        </Card>
 
-        window.openAIModal = () => document.getElementById('ai-modal').style.display = 'flex';
-        window.closeAIModal = () => document.getElementById('ai-modal').style.display = 'none';
+        <div className="flex justify-between items-center px-2">
+          <h3 className="font-black text-lg text-[#555]">支出明細</h3>
+          <button onClick={() => setIsAddingExpense(true)} className="bg-journal-green text-white px-4 py-2 rounded-xl text-xs font-black shadow-sm active:scale-95 transition-transform">+ 新增筆跡</button>
+        </div>
 
-        window.runAISmartAdd = async () => {
-            const link = document.getElementById('ai-link').value;
-            const stay = document.getElementById('ai-stay').value;
-            const note = document.getElementById('ai-notes').value;
-            const key = document.getElementById('user-key').value || localData.config.apiKey;
-            if(!link || !key) { alert("連結與金鑰必填！"); return; }
+        <div className="space-y-4">
+          {expenses.map(ex => (
+            <Card key={ex.id} className="flex justify-between items-center p-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#F7F4EB] text-journal-blue flex items-center justify-center">
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <p className="font-black text-[#555]">{ex.title}</p>
+                  <p className="text-[10px] text-gray-400 font-bold">{ex.date} • {ex.category}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-black text-xl text-[#555]">CHF {ex.amount}</p>
+                <p className="text-[10px] text-gray-300 font-bold">≈ NT$ {Math.round(ex.amount * EXCHANGE_RATE)}</p>
+              </div>
+            </Card>
+          ))}
+          {expenses.length === 0 && <p className="text-center py-20 text-gray-300 font-bold italic">目前沒有任何支出紀錄</p>}
+        </div>
+      </div>
+    );
+  };
 
-            const btn = document.getElementById('ai-btn');
-            btn.disabled = true; btn.innerText = "AI 分析路徑與重新排程中...";
+  return (
+    <div className="min-h-screen bg-[#F7F4EB] bg-[radial-gradient(#D1D1D1_1px,transparent_1px)] bg-[length:24px_24px] text-[#555] font-sans pb-36">
+      <header className="sticky top-0 z-40 bg-[#F7F4EB]/90 backdrop-blur-md px-6 py-8 flex justify-between items-center border-b border-gray-100">
+        <div>
+          <h1 className="text-2xl font-black tracking-tighter text-[#555] leading-none mb-1">SWISS DIARY</h1>
+          <p className="text-[10px] text-journal-blue font-black uppercase tracking-[0.2em]">14 DAYS • 5 MEMBERS</p>
+        </div>
+        
+        {/* 新增按鈕：移動至右上方 */}
+        <button 
+          onClick={() => setIsAddingItem(true)}
+          className="bg-journal-green text-white w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center active:scale-90 transition-transform border-2 border-white"
+        >
+          <Plus size={24} strokeWidth={4} />
+        </button>
+      </header>
 
-            const dayData = localData.days.find(d => d.day === currentDay);
-            const prompt = `你是一位瑞士導遊。新景點(${link}, 停留${stay}H, 備註:${note})。比對當天現有行程(${JSON.stringify(dayData.cards)})，決定最順路插入位置並回傳完整當天 cards 陣列 JSON。交通卡片 time 請以分鐘數字表示。`;
+      <main className="px-6 py-4 max-w-lg mx-auto">
+        {activeTab === 'schedule' ? <ScheduleView /> : activeTab === 'expense' ? <ExpenseView /> : (
+          <div className="flex flex-col items-center justify-center py-24 text-gray-200">
+            <Info size={40} className="mb-4 opacity-20" />
+            <p className="font-bold tracking-widest text-sm uppercase">Developing: {activeTab}</p>
+          </div>
+        )}
+      </main>
 
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
-                    method: 'POST',
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" }})
-                });
-                const result = await res.json();
-                const newCards = JSON.parse(result.candidates[0].content.parts[0].text);
-                
-                dayData.cards = newCards;
-                localData.config.apiKey = key;
-                document.getElementById('save-fab').classList.remove('hidden');
-                closeAIModal(); refreshUI();
-            } catch (e) { alert("AI 規劃解析失敗，請手動調整。"); }
-            finally { btn.disabled = false; btn.innerText = "開始智慧規劃並排程"; }
-        };
+      {/* 底部導覽 */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-8 py-6 flex justify-between items-center z-50 rounded-t-[3.5rem] shadow-2xl max-w-lg mx-auto">
+        {[
+          { id: 'schedule', icon: Calendar, label: '行程' },
+          { id: 'booking', icon: CreditCard, label: '憑證' },
+          { id: 'expense', icon: Wallet, label: '記帳' },
+          { id: 'planning', icon: CheckSquare, label: '準備' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex flex-col items-center gap-2 transition-all duration-300 ${
+              activeTab === tab.id ? 'text-journal-blue scale-110' : 'text-gray-200'
+            }`}
+          >
+            <div className={`p-2 rounded-2xl transition-colors ${activeTab === tab.id ? 'bg-journal-blue/10' : ''}`}>
+              <tab.icon size={26} strokeWidth={activeTab === tab.id ? 3 : 2} />
+            </div>
+          </button>
+        ))}
+      </nav>
 
-        // --- 其餘輔助功能 ---
-        const renderDayTabs = () => {
-            const nav = document.getElementById('day-navbar');
-            nav.innerHTML = '';
-            localData.days.forEach(d => {
-                const btn = document.createElement('button');
-                btn.className = `flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black ${d.day === currentDay ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-400'}`;
-                btn.innerText = `DAY ${d.day}`;
-                btn.onclick = () => { currentDay = d.day; refreshUI(); };
-                nav.appendChild(btn);
-            });
-        };
+      {/* 新增行程 Modal */}
+      <Modal isOpen={isAddingItem} onClose={() => setIsAddingItem(false)} title="新增冒險行程">
+        <form onSubmit={handleAddItem} className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">開始時間</label>
+              <input name="time" type="time" required className="w-full bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">預估時程 (min)</label>
+              <input name="duration" type="number" placeholder="60" className="w-full bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">景點 / 交通項目</label>
+            <input name="title" required placeholder="例如：策馬特小鎮拍日出" className="w-full bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">類別</label>
+            <div className="grid grid-cols-5 gap-2">
+              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                <label key={key} className="cursor-pointer">
+                  <input type="radio" name="category" value={key} defaultChecked={key==='spot'} className="hidden peer" />
+                  <div className="peer-checked:bg-journal-blue peer-checked:text-white border-2 border-gray-100 bg-white p-2 rounded-xl text-center text-[10px] font-black transition-all">
+                    {label}
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Google Map 連結 (必填)</label>
+            <input name="googleMapUrl" required type="url" placeholder="貼上地圖導航連結" className="w-full bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none text-xs text-blue-400 underline" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">備註提醒</label>
+            <textarea name="note" rows="2" placeholder="例如：記得帶半價卡..." className="w-full bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">上傳景點照片 (JPG)</label>
+            <label className="w-full flex flex-col items-center justify-center border-2 border-dashed border-gray-200 bg-white p-6 rounded-3xl cursor-pointer hover:bg-gray-50 transition-colors">
+              <Camera size={24} className="text-gray-300 mb-2" />
+              <span className="text-[10px] font-bold text-gray-400">從相簿選取照片</span>
+              <input type="file" accept="image/jpeg" className="hidden" />
+            </label>
+          </div>
+          <button type="submit" className="w-full bg-journal-blue text-white py-5 rounded-[2rem] font-black shadow-xl active:scale-95 transition-transform tracking-widest">
+            存檔至 DAY {SWISS_DAYS.findIndex(d => d.id === selectedDay) + 1}
+          </button>
+        </form>
+      </Modal>
 
-        const renderExpenses = () => {
-            const history = document.getElementById('expense-history');
-            history.innerHTML = '';
-            let total = 0;
-            ['A', 'B'].forEach(u => {
-                const list = localData.expenses[u] || [];
-                const uSum = list.reduce((s, e) => s + parseFloat(e.amount), 0);
-                total += uSum;
-                const section = document.createElement('div');
-                section.innerHTML = `<p class="text-[10px] font-black text-slate-400 mb-2 uppercase">${u==='A'?'USER A':'USER B'} · TOTAL CHF ${uSum.toFixed(2)}</p>`;
-                list.forEach(e => {
-                    const row = document.createElement('div');
-                    row.className = 'bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center mb-2 shadow-sm';
-                    row.innerHTML = `<span class="font-bold">${e.name || 'Expense'}</span><span class="font-black text-red-500">CHF ${e.amount}</span>`;
-                    section.appendChild(row);
-                });
-                history.appendChild(section);
-            });
-            document.getElementById('grand-total').innerText = `CHF ${total.toFixed(2)}`;
-        };
+      {/* 新增記帳 Modal */}
+      <Modal isOpen={isAddingExpense} onClose={() => setIsAddingExpense(false)} title="紀錄支出">
+        <form onSubmit={handleAddExpense} className="space-y-6">
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">消費項目</label>
+            <input name="title" required placeholder="例如：少女峰火車票" className="w-full bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">金額 (CHF)</label>
+              <input name="amount" type="number" step="0.01" required placeholder="0.00" className="w-full bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">類別</label>
+              <select name="category" className="w-full bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none">
+                <option value="交通">交通</option>
+                <option value="飲食">飲食</option>
+                <option value="住宿">住宿</option>
+                <option value="購物">購物</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-journal-green text-white py-5 rounded-[2rem] font-black shadow-xl active:scale-95 transition-transform tracking-widest">
+            確認入帳
+          </button>
+        </form>
+      </Modal>
 
-        window.addExpense = () => {
-            const name = document.getElementById('exp-name').value;
-            const amt = document.getElementById('exp-amount').value;
-            const u = document.getElementById('exp-payer').value;
-            if(!amt) return;
-            localData.expenses[u].push({ name, amount: amt });
-            document.getElementById('save-fab').classList.remove('hidden');
-            refreshUI();
-        };
-
-        const renderChecks = () => {
-            const fix = document.getElementById('fixed-checks');
-            fix.innerHTML = '';
-            staticChecklist.forEach(item => {
-                const done = localData.checklist[item];
-                const div = document.createElement('div');
-                div.className = `p-4 rounded-2xl flex items-center transition ${done ? 'bg-orange-50 border-l-8 border-orange-400' : 'bg-white'}`;
-                div.onclick = () => { localData.checklist[item] = !done; refreshUI(); document.getElementById('save-fab').classList.remove('hidden'); };
-                div.innerHTML = `<i class="fas ${done ? 'fa-check-circle text-orange-500' : 'fa-circle text-slate-100'} text-xl mr-3"></i><span class="font-black ${done ? 'text-orange-900' : 'text-slate-600'}">${item}</span>`;
-                fix.appendChild(div);
-            });
-            const allDone = staticChecklist.every(i => localData.checklist[i]);
-            document.getElementById('prep-alert').classList.toggle('hidden', !allDone);
-        };
-
-        const renderWeather = () => {
-            const w = localData.days.find(d => d.day === currentDay).weather || {};
-            document.getElementById('weather-box').innerHTML = `
-                <i class="fas fa-${w.icon || 'sun'} text-orange-400"></i>
-                <span>${w.temp || '--'}</span> | <span>雨率 ${w.rain || '0%'}</span>
-            `;
-        };
-
-        document.getElementById('edit-mode-toggle').onclick = () => {
-            isEditMode = !isEditMode;
-            document.getElementById('edit-mode-toggle').classList.toggle('bg-red-500');
-            document.getElementById('edit-mode-toggle').classList.toggle('text-white');
-            if(isEditMode) {
-                const btn = document.createElement('button');
-                btn.id = 'temp-add-btn';
-                btn.className = 'w-full mt-4 bg-emerald-500 text-white py-4 rounded-2xl font-black shadow-lg';
-                btn.innerHTML = '<i class="fas fa-magic mr-2"></i>AI 智慧偵測加點';
-                btn.onclick = openAIModal;
-                document.getElementById('page-itinerary').prepend(btn);
-            } else {
-                document.getElementById('temp-add-btn')?.remove();
-            }
-        };
-
-        document.getElementById('save-fab').onclick = async () => {
-            if(!window.db) return;
-            const docRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
-            await setDoc(docRef, localData);
-            document.getElementById('save-fab').classList.add('hidden');
-            alert("雲端同步成功！");
-        };
-
-        document.getElementById('departure-input').onchange = (e) => {
-            const day = localData.days.find(d => d.day === currentDay);
-            day.startTime = e.target.value;
-            document.getElementById('save-fab').classList.remove('hidden');
-            renderTimeline();
-        };
-
-    </script>
-</body>
-</html>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { -webkit-tap-highlight-color: transparent; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+      `}</style>
+    </div>
+  );
+}
