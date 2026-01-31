@@ -1,286 +1,498 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Swiss & Milan 2026 | 數位行程表</title>
-    <!-- Tailwind & FontAwesome -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, collection, doc, onSnapshot, 
+  addDoc, updateDoc, query, deleteDoc, orderBy, getDoc, setDoc, writeBatch
+} from 'firebase/firestore';
+import { 
+  getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken 
+} from 'firebase/auth';
 
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-milan-2026';
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+import { 
+  Calendar, Clock, Plus, Utensils, Home, Camera, 
+  CreditCard, CheckSquare, ChevronRight, Navigation, 
+  Check, Plane, Info, Search, Map as MapIcon, Ship, Car, 
+  Trash2, TrainFront, Mountain, Image as ImageIcon,
+  ArrowRight, Bus, Wallet, TrendingUp, MapPin, 
+  AlertTriangle, Footprints, Camera as CameraIcon,
+  User, Layers, RefreshCw, GripVertical, CheckCircle2, Circle,
+  ChevronUp, ChevronDown, Repeat, MessageSquare, Send, Edit3, Building
+} from 'lucide-react';
 
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-        initAuth();
+// --- Firebase 初始化 ---
+const firebaseConfig = typeof __firebase_config !== 'undefined' 
+  ? JSON.parse(__firebase_config) 
+  : { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
 
-        window.db = db;
-        window.appId = appId;
-    </script>
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'swiss-trip-v14';
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@300;600&display=swap');
-        :root { 
-            --bg-base: #FDFCFB; 
-            --accent-transport: #5B84B1; 
-            --accent-spot: #D4A373; 
-            --accent-hotel: #8E7B6D; 
-        }
-        body { 
-            background-color: var(--bg-base); 
-            color: #3D3D3D; 
-            font-family: 'Noto Sans TC', sans-serif; 
-            -webkit-font-smoothing: antialiased; 
-            font-size: 16px; 
-        }
-        .serif { font-family: 'Noto Serif TC', serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .card { 
-            background: white; 
-            border-radius: 28px; 
-            width: 100%; 
-            margin-bottom: 8px; 
-            overflow: hidden; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
-            border: 1px solid rgba(230, 225, 218, 0.5); 
-        }
-        .transport-card { background: #F8FAFC; border: 1px dashed var(--accent-transport); }
-        .spot-card { border-bottom: 5px solid var(--accent-spot); }
-        .hotel-card { border-left: 8px solid var(--accent-hotel); }
-        .arrow-divider { display: flex; justify-content: center; align-items: center; height: 55px; color: #E2E8F0; font-size: 1.6rem; }
-        .day-btn { flex: 0 0 auto; width: 75px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 24px; transition: all 0.3s; background: transparent; }
-        .day-btn.active { background: white; box-shadow: 0 6px 20px rgba(0,0,0,0.08); color: var(--accent-transport); transform: translateY(-3px); border: 1px solid #E2E8F0; }
-        .step-list-item { position: relative; padding-left: 32px; border-left: 2px solid #CBD5E1; margin-left: 10px; margin-bottom: 20px; }
-        .step-list-item::before { content: ''; position: absolute; left: -5px; top: 10px; width: 9px; height: 9px; background: var(--accent-transport); border-radius: 50%; }
-        input, textarea { background: #F9F9F9; border: 1px solid #DDD; border-radius: 12px; padding: 10px 14px; width: 100%; margin-top: 8px; font-size: 16px; }
-        
-        .text-detail { font-size: 16px; line-height: 1.6; }
-        .text-title { font-size: 20px; font-weight: 700; }
-    </style>
-</head>
-<body class="max-w-md mx-auto min-h-screen pb-24">
+// --- 數據常量 ---
+const SWISS_DAYS = [
+  { id: '2026-03-18', label: 'Day 1', date: '3/18(三)' }, { id: '2026-03-19', label: 'Day 2', date: '3/19(四)' },
+  { id: '2026-03-20', label: 'Day 3', date: '3/20(五)' }, { id: '2026-03-21', label: 'Day 4', date: '3/21(六)' },
+  { id: '2026-03-22', label: 'Day 5', date: '3/22(日)' }, { id: '2026-03-23', label: 'Day 6', date: '3/23(一)' },
+  { id: '2026-03-24', label: 'Day 7', date: '3/24(二)' }, { id: '2026-03-25', label: 'Day 8', date: '3/25(三)' },
+  { id: '2026-03-26', label: 'Day 9', date: '3/26(四)' }, { id: '2026-03-27', label: 'Day 10', date: '3/27(五)' },
+  { id: '2026-03-28', label: 'Day 11', date: '3/28(六)' }, { id: '2026-03-29', label: 'Day 12', date: '3/29(日)' },
+  { id: '2026-03-30', label: 'Day 13', date: '3/30(一)' }, { id: '2026-03-31', label: 'Day 14', date: '3/31(二)' },
+];
 
-    <!-- Header -->
-    <header class="sticky top-0 z-50 bg-[#FDFCFB]/95 backdrop-blur-md pt-8 pb-4">
-        <div class="px-6 mb-6 flex justify-between items-start">
-            <div>
-                <h1 class="text-3xl font-extralight tracking-widest serif italic text-slate-700">The Archive.</h1>
-                <p class="text-[12px] uppercase tracking-[0.4em] text-slate-400 mt-1 font-bold">Swiss & Milan 2026</p>
-            </div>
-            <button id="edit-toggle" class="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-emerald-500 transition">
-                <i class="fas fa-edit"></i>
-            </button>
+const CATEGORY_COLORS = { spot: 'bg-[#A7B09E]', food: 'bg-[#D69E9E]', transport: 'bg-[#9BAEBC]', hotel: 'bg-[#E0D8C3]', flight: 'bg-[#C25E5E]' };
+
+// --- 根據 PDF 完善的 14 天初始數據 ---
+const INITIAL_SCHEDULES = [
+  { date: '2026-03-18', time: '00:20', title: '台北 TPE (EK0387)', city: '台北', category: 'flight', note: '啟程前往杜拜', order: 10 },
+  { date: '2026-03-18', time: '12:25', title: '蘇黎世 ZRH 抵達', city: '蘇黎世', category: 'spot', note: '持半價卡現場買票', order: 20 },
+  { date: '2026-03-18', time: '13:00', title: '機場火車 → 因特拉肯', city: '因特拉肯', category: 'transport', note: '約 2 小時車程', order: 30 },
+  { date: '2026-03-19', time: '08:40', title: '東站 → 格林德瓦 (35分)', city: '因特拉肯', category: 'transport', order: 10 },
+  { date: '2026-03-19', time: '11:00', title: '少女峰 Jungfraujoch', city: '少女峰', category: 'spot', note: '斯芬克斯觀景台', order: 20 },
+  { date: '2026-03-22', time: '10:00', title: '施皮茨城堡 Spiez Castle', city: '施皮茨', category: 'spot', order: 10 },
+  { date: '2026-03-25', time: '16:00', title: '策馬特 Zermatt 抵達', city: '策馬特', category: 'spot', note: '初見馬特洪峰', order: 10 },
+];
+
+// --- UI 組件 ---
+const Card = ({ children, className = "", onLongPress, onClick, isSelected, draggable, onDragStart, onDragOver, onDrop }) => {
+  const timerRef = useRef(null);
+  const handlePointerDown = () => { timerRef.current = setTimeout(() => { if (onLongPress) onLongPress(); }, 700); };
+  const handlePointerUp = () => { if (timerRef.current) clearTimeout(timerRef.current); };
+
+  return (
+    <div 
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onClick={onClick}
+      className={`bg-white rounded-[2rem] shadow-[10px_10px_0px_rgba(28,25,18,0.15)] border-[3px] transition-all p-6 relative ${
+        isSelected ? 'border-journal-blue ring-8 ring-journal-blue/10 scale-[1.03]' : 'border-[#4A4433]'
+      } ${draggable ? 'cursor-move opacity-70 border-dashed border-journal-blue' : 'cursor-pointer'} ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+      <div className="bg-[#F7F4EB] w-full max-w-lg rounded-t-[3.5rem] sm:rounded-[3.5rem] p-8 shadow-2xl overflow-y-auto max-h-[92vh] border-t-8 border-journal-blue border-x-[6px] border-white">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-black text-[#1C1912] tracking-tighter">{title}</h2>
+          <button onClick={onClose} className="p-3 bg-white rounded-full shadow-lg text-gray-400 active:scale-50 transition-all">✕</button>
         </div>
-        <div class="flex overflow-x-auto no-scrollbar gap-3 px-6 pb-2" id="date-navbar"></div>
-    </header>
+        {children}
+      </div>
+    </div>
+  );
+};
 
-    <!-- Main Content -->
-    <main class="px-6 mt-4" id="itinerary-content">
-        <div class="flex justify-center items-center py-20 text-slate-300">
-            <i class="fas fa-circle-notch animate-spin mr-2"></i> 同步雲端資料中...
+// --- 今日大綱組件 (IME 修正版) ---
+const SummaryInput = ({ initialText, onSave, selectedDay }) => {
+  const [localText, setLocalText] = useState(initialText || '');
+  const [isComposing, setIsComposing] = useState(false);
+
+  useEffect(() => { setLocalText(initialText || ''); }, [initialText, selectedDay]);
+
+  const handleBlur = () => {
+    if (localText !== initialText) onSave(selectedDay, localText);
+  };
+
+  return (
+    <div className="bg-white/70 rounded-[1.8rem] p-4 border-[2px] border-white/50 shadow-lg relative overflow-hidden group mb-4">
+      <div className="absolute top-0 right-0 p-2 opacity-10"><Edit3 size={16} /></div>
+      <p className="text-[9px] font-black uppercase tracking-[0.4em] text-journal-blue mb-1 opacity-60">Daily Focus</p>
+      <textarea 
+        className="bg-transparent border-none w-full text-xl font-black text-[#1C1912] placeholder-[#1C1912]/20 outline-none resize-none leading-tight"
+        placeholder="點擊輸入今日旅程大綱..."
+        rows="1"
+        value={localText}
+        onCompositionStart={() => setIsComposing(true)}
+        onCompositionEnd={() => setIsComposing(false)}
+        onChange={(e) => {
+          setLocalText(e.target.value);
+          if (!isComposing) {
+            e.target.style.height = 'auto';
+            e.target.style.height = e.target.scrollHeight + 'px';
+          }
+        }}
+        onBlur={handleBlur}
+      />
+    </div>
+  );
+};
+
+// --- 主程式 ---
+export default function App() {
+  const [activeTab, setActiveTab] = useState('schedule');
+  const [selectedDay, setSelectedDay] = useState('2026-03-18');
+  const [user, setUser] = useState(null);
+  const [schedules, setSchedules] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [todos, setTodos] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [dailySummaries, setDailySummaries] = useState({});
+  const [exchangeRates, setExchangeRates] = useState({ TWD: 1, CHF: 36.8, EUR: 35.2 });
+  const [activeStepId, setActiveStepId] = useState(null);
+  const [expenseFilter, setExpenseFilter] = useState('all');
+  const [isAddingModalOpen, setIsAddingModalOpen] = useState(false);
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [draggedItemIndex, setDraggedItemIndex] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // 初始化與數據監聽
+  useEffect(() => {
+    const initAuth = async () => {
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
+      }
+    };
+    initAuth();
+    onAuthStateChanged(auth, setUser);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const sRef = collection(db, 'artifacts', appId, 'public', 'data', 'schedules');
+    const unsubS = onSnapshot(sRef, (s) => {
+      if (s.empty) INITIAL_SCHEDULES.forEach(i => addDoc(sRef, i));
+      else setSchedules(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order));
+    });
+    
+    const eRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
+    const unsubE = onSnapshot(eRef, (s) => setExpenses(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    
+    const tRef = collection(db, 'artifacts', appId, 'public', 'data', 'todos');
+    const unsubT = onSnapshot(tRef, (s) => setTodos(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+
+    const mRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+    const unsubM = onSnapshot(mRef, (s) => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.createdAt - a.createdAt)));
+
+    const dsRef = collection(db, 'artifacts', appId, 'public', 'data', 'dailySummaries');
+    const unsubDS = onSnapshot(dsRef, (s) => {
+      const summaries = {};
+      s.docs.forEach(doc => { summaries[doc.id] = doc.data().text; });
+      setDailySummaries(summaries);
+    });
+
+    return () => { unsubS(); unsubE(); unsubT(); unsubM(); unsubDS(); };
+  }, [user]);
+
+  useEffect(() => {
+    fetch('https://open.er-api.com/v6/latest/TWD').then(r => r.json()).then(d => {
+      if (d.rates) setExchangeRates({ TWD: 1, CHF: 1 / d.rates.CHF, EUR: 1 / d.rates.EUR });
+    });
+  }, []);
+
+  const currentItems = useMemo(() => schedules.filter(s => s.date === selectedDay), [schedules, selectedDay]);
+
+  // --- 操作處理函數 ---
+  const handleGlobalAdd = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const path = activeTab === 'schedule' ? 'schedules' : activeTab === 'expense' ? 'expenses' : activeTab === 'planning' ? 'todos' : 'messages';
+    const collRef = collection(db, 'artifacts', appId, 'public', 'data', path);
+
+    if (activeTab === 'schedule') {
+      await addDoc(collRef, {
+        date: selectedDay, time: fd.get('time'), title: fd.get('title'), city: fd.get('city'), category: fd.get('category'), 
+        note: fd.get('note'), googleMapUrl: fd.get('googleMapUrl'), duration: fd.get('duration') || '60', order: Date.now()
+      });
+    } else if (activeTab === 'expense') {
+      await addDoc(collRef, {
+        title: fd.get('title'), amount: parseFloat(fd.get('amount')), currency: fd.get('currency'),
+        category: fd.get('category'), userId: user?.uid, 
+        userName: user?.displayName || `Member-${user?.uid.slice(0, 4)}`,
+        date: new Date().toLocaleDateString(), createdAt: Date.now()
+      });
+    } else if (activeTab === 'planning') {
+      await addDoc(collRef, { title: fd.get('title'), completed: false, createdAt: Date.now() });
+    } else if (activeTab === 'messages') {
+      await addDoc(collRef, { text: fd.get('text'), userId: user?.uid, userName: user?.displayName || `Member-${user?.uid.slice(0, 4)}`, createdAt: Date.now() });
+    }
+    setIsAddingModalOpen(false);
+  };
+
+  const handleUpdateDetail = async (e) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    const fd = new FormData(e.target);
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', editingItem.id), {
+      note: fd.get('note'), googleMapUrl: fd.get('googleMapUrl'), title: fd.get('title'), city: fd.get('city')
+    });
+    setEditingItem(null);
+  };
+
+  const swapDays = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const day1 = fd.get('day1'), day2 = fd.get('day2');
+    if (!day1 || !day2 || day1 === day2) return;
+    const batch = writeBatch(db);
+    schedules.filter(s => s.date === day1).forEach(i => batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', i.id), { date: day2 }));
+    schedules.filter(s => s.date === day2).forEach(i => batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', i.id), { date: day1 }));
+    
+    const s1Ref = doc(db, 'artifacts', appId, 'public', 'data', 'dailySummaries', day1);
+    const s2Ref = doc(db, 'artifacts', appId, 'public', 'data', 'dailySummaries', day2);
+    batch.set(s1Ref, { text: dailySummaries[day2] || '' });
+    batch.set(s2Ref, { text: dailySummaries[day1] || '' });
+    await batch.commit();
+    setIsSwapModalOpen(false);
+    setSelectedDay(day2);
+  };
+
+  const updateDailySummary = async (date, text) => {
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'dailySummaries', date), { text });
+  };
+
+  const reorderItems = async (dragIdx, dropIdx) => {
+    const items = [...currentItems];
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', items[dragIdx].id), { order: items[dropIdx].order });
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'schedules', items[dropIdx].id), { order: items[dragIdx].order });
+  };
+
+  const toggleTodo = (id, status) => {
+    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'todos', id), { completed: !status });
+  };
+
+  const deleteItem = async (path, id) => {
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', path, id));
+  };
+
+  // --- 子頁面視圖 ---
+
+  const ScheduleView = () => {
+    const activeIdx = currentItems.findIndex(i => i.id === activeStepId);
+    return (
+      <div className="space-y-4 pb-32 animate-fade-in">
+        <SummaryInput selectedDay={selectedDay} initialText={dailySummaries[selectedDay]} onSave={updateDailySummary} />
+        
+        <div className="flex items-center gap-3">
+          <div className="flex-1 flex gap-3 overflow-x-auto pb-3 no-scrollbar touch-pan-x">
+            {SWISS_DAYS.map((day) => (
+              <button key={day.id} onClick={() => setSelectedDay(day.id)} className={`flex-shrink-0 flex flex-col items-center justify-center min-w-[70px] h-[70px] rounded-[2rem] transition-all border-[3px] ${selectedDay === day.id ? 'bg-journal-blue text-white border-white shadow-xl font-black' : 'bg-white/30 text-[#1C1912]/50 border-transparent font-bold'}`}>
+                <span className="text-[9px] uppercase mb-1 opacity-70">{day.label}</span>
+                <span className="text-base">{day.date}</span>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setIsSwapModalOpen(true)} className="p-3 bg-white/40 rounded-2xl text-journal-blue active:scale-75 shadow-lg"><Repeat size={20} strokeWidth={3} /></button>
         </div>
-    </main>
 
-    <!-- Save Button -->
-    <button id="save-btn" class="hidden fixed bottom-10 right-6 bg-emerald-500 text-white w-14 h-14 rounded-full shadow-2xl z-[100] flex items-center justify-center text-xl">
-        <i class="fas fa-cloud-upload-alt"></i>
-    </button>
-
-    <script type="module">
-        import { doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const defaultTripData = {
-            days: [
-                { day: 1, date: "3/18", weekday: "WED", title: "蘇黎世入境 ➔ 因特拉肯", cards: [
-                    { type: "hotel", name: "台灣機場", desc: "00:20 出發 EK0387 (Terminal 2)", img: "https://images.unsplash.com/photo-1542296332-2e4473faf563" },
-                    { type: "transport", name: "入境與移動路程", img: "https://images.unsplash.com/photo-1527668752968-14dc70a27c95", steps: [
-                        {mode: "飛機", route: "杜拜轉機 (EK0087)", time: "12:25 抵達蘇黎世"},
-                        {mode: "火車", route: "蘇黎世機場 ➔ 因特拉肯東站", time: "2hr (經伯恩/盧塞恩)"}
-                    ], detail: "火車可當天刷卡上車，不需預約。" },
-                    { type: "spot", name: "因特拉肯東站 Interlaken Ost", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793", desc: "主要的交通樞紐。抵達後放行李、早點休息調整時差。" },
-                    { type: "hotel", name: "住宿飯店：因特拉肯", desc: "連住 5 晚的第一晚。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
-                ]},
-                { day: 2, date: "3/19", weekday: "THU", title: "少女峰：歐洲之巔全覽", cards: [
-                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "08:30 出發避開人潮。", img: "https://images.unsplash.com/photo-1590494165264-1ebe3602eb80" },
-                    { type: "transport", name: "前往少女峰路程", img: "https://images.unsplash.com/photo-1531366930491-81529969ff3c", steps: [
-                        {mode: "火車 R61", route: "東站 ➔ 格林德瓦轉運站", time: "35m"},
-                        {mode: "纜車 (快線)", route: "艾格快線 Eiger Express", time: "15m"},
-                        {mode: "齒軌火車", route: "艾格冰河 ➔ 少女峰站", time: "25m"}
-                    ], detail: "全程銜接約 90 分鐘。持 STP 享購票優惠。" },
-                    { type: "spot", name: "斯芬克斯觀景台 / 阿萊奇冰川", img: "https://images.unsplash.com/photo-1541410965313-d53b3c16ef17", desc: "11:00-14:00 拍攝重點。俯瞰阿萊奇冰川、走訪冰原平台。" },
-                    { type: "transport", name: "回程路段", img: "https://images.unsplash.com/photo-1549221195-23671f544521", steps: [
-                        {mode: "火車 (回程)", route: "原路返回因特拉肯", time: "90min"}
-                    ], detail: "今日只排這條線避免高山疲勞。" },
-                    { type: "hotel", name: "住宿飯店：因特拉肯", desc: "休息、吃頓熱騰騰的晚餐。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
-                ]},
-                { day: 3, date: "3/20", weekday: "FRI", title: "First 山 ➔ 盧達本納瀑布谷", cards: [
-                    { type: "hotel", name: "起點：因特拉肯飯店", desc: "準備好健行鞋。", img: "https://images.unsplash.com/photo-1590494165264-1ebe3602eb80" },
-                    { type: "transport", name: "前往 First 山頂", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48", steps: [
-                        {mode: "火車", route: "Interlaken ➔ Grindelwald", time: "35m"},
-                        {mode: "纜車", route: "Grindelwald ➔ First", time: "25m"}
-                    ], detail: "纜車可俯瞰格林德瓦美景。" },
-                    { type: "spot", name: "巴哈阿爾普湖 Bachalpsee", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b", desc: "健行約 20-30 分鐘，捕捉著名的倒影湖（優先搶無風時段）。" },
-                    { type: "transport", name: "前往瀑布谷路段", img: "https://images.unsplash.com/photo-1506744038136-46273834b3fb", steps: [
-                        {mode: "火車", route: "Grindelwald ➔ Zweilütschinen ➔ Lauterbrunnen", time: "約 30m"}
-                    ], detail: "在雙湖站轉車非常方便。" },
-                    { type: "spot", name: "盧達本納 Lauterbrunnen", img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4", desc: "15:30-17:30 拍 Staubbach Falls 瀑布谷逆光，參觀室內瀑布 Trümmelbach。" },
-                    { type: "hotel", name: "住宿飯店：因特拉肯", desc: "今日步行較多，早點放鬆。", img: "https://images.unsplash.com/photo-1520175480921-4edfa0683001" }
-                ]},
-                { day: 10, date: "3/27", weekday: "FRI", title: "Gornergrat ➔ 經典倒影湖", cards: [
-                    { type: "hotel", name: "起點：策馬特飯店", desc: "馬特洪峰全日陪伴。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" },
-                    { type: "transport", name: "登山火車路段", img: "https://images.unsplash.com/photo-1538330621152-478f3d057e90", steps: [
-                        {mode: "火車 (GGB)", route: "Zermatt GGB ➔ Gornergrat", time: "35m"}
-                    ], detail: "上山坐右側，馬特洪峰全程相伴。" },
-                    { type: "spot", name: "Riffelsee 倒影湖", img: "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f", desc: "Rotenboden 站下車步行 10 分鐘，拍經典倒影。" },
-                    { type: "hotel", name: "策馬特飯店", desc: "回到小鎮享受藍調時刻。", img: "https://images.unsplash.com/photo-1533512930330-4ac257c86793" }
-                ]}
-            ]
-        };
-
-        let currentDay = 2;
-        let isEditMode = false;
-        let localData = null;
-
-        const getTransportIcon = (mode) => {
-            const m = mode.toLowerCase();
-            if (m.includes('火車')) return '<i class="fas fa-train mr-2 text-blue-500"></i>';
-            if (m.includes('纜車') || m.includes('快線')) return '<i class="fas fa-cable-car mr-2 text-indigo-500"></i>';
-            if (m.includes('步行') || m.includes('走')) return '<i class="fas fa-walking mr-2 text-emerald-500"></i>';
-            if (m.includes('飛機')) return '<i class="fas fa-plane mr-2 text-slate-500"></i>';
-            return '<i class="fas fa-chevron-right mr-2 text-slate-300"></i>';
-        };
-
-        const renderNavBar = () => {
-            const navbar = document.getElementById('date-navbar');
-            navbar.innerHTML = '';
-            localData.days.sort((a,b) => a.day - b.day).forEach(item => {
-                const btn = document.createElement('button');
-                btn.className = `day-btn ${item.day === currentDay ? 'active' : ''}`;
-                btn.onclick = () => { currentDay = item.day; renderContent(); };
-                btn.innerHTML = `<span class="text-[10px] font-black text-slate-400 opacity-60 uppercase">Day</span>
-                                 <span class="text-xl font-serif italic leading-none my-1">${item.day}</span>
-                                 <span class="text-[11px] font-bold opacity-80">${item.date}</span>`;
-                navbar.appendChild(btn);
-            });
-        };
-
-        const renderContent = () => {
-            const data = localData.days.find(d => d.day === currentDay);
-            const container = document.getElementById('itinerary-content');
-            if(!data) return;
-
-            let html = `
-                <div class="mb-8 fade-in">
-                    <p class="text-[12px] font-black text-slate-400 tracking-widest uppercase mb-1 italic">March ${data.date} (${data.weekday})</p>
-                    ${isEditMode ? `<input type="text" value="${data.title}" id="day-title-input" class="text-2xl font-serif italic text-slate-700">` : `<h2 class="text-3xl font-serif italic text-slate-700 leading-tight">${data.title}</h2>`}
-                </div>
-            `;
-
-            data.cards.forEach((card, idx) => {
-                if (idx > 0) html += `<div class="arrow-divider"><i class="fas fa-chevron-down text-slate-200"></i></div>`;
+        {isReorderMode && <div className="bg-journal-blue text-white p-4 rounded-[1.5rem] text-sm font-black animate-pulse shadow-2xl flex items-center justify-center gap-3"><span>拖拽卡片排序</span><button onClick={() => setIsReorderMode(false)} className="bg-white text-journal-blue px-3 py-1 rounded-full text-xs">完成</button></div>}
+        
+        <div className="relative pl-14 space-y-4">
+          <div className="absolute left-[1.65rem] top-8 bottom-8 w-[3px] bg-[#1C1912]/15 rounded-full" />
+          {currentItems.map((item, index) => {
+            const isTransport = item.category === 'transport', isActive = item.id === activeStepId, isPast = index < activeIdx;
+            return (
+              <div key={item.id} className="relative" onDragOver={(e) => e.preventDefault()} onDrop={() => reorderItems(draggedItemIndex, index)}>
+                {!isTransport && <div onClick={() => setActiveStepId(item.id)} className={`absolute -left-[3.25rem] top-8 z-20 w-12 h-12 rounded-full border-[5px] border-[#CFC8B3] flex items-center justify-center shadow-2xl transition-all duration-500 cursor-pointer ${isPast ? 'bg-journal-green' : isActive ? 'bg-journal-blue animate-bounce scale-110 shadow-journal-blue/30' : 'bg-white/60 backdrop-blur-md'}`}>{isPast ? <CheckCircle2 size={26} className="text-white" /> : isActive ? <div className="text-2xl">🏃</div> : null}</div>}
                 
-                if (card.type === 'hotel') {
-                    html += `
-                        <div class="card hotel-card shadow-lg p-6">
-                            ${isEditMode ? `<input placeholder="圖片網址" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-40 bg-slate-100 bg-cover bg-center rounded-2xl mb-4" style="background-image: url('${card.img}')"></div>`}
-                            <div class="flex items-center gap-2 mb-3"><i class="fas fa-house-chimney text-orange-400"></i><span class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Base Camp</span></div>
-                            ${isEditMode ? `<input value="${card.name}" onchange="updateCardField(${idx}, 'name', this.value)">` : `<h3 class="text-title text-slate-700">${card.name}</h3>`}
-                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'desc', this.value)">${card.desc}</textarea>` : `<p class="text-detail text-slate-400 mt-2 italic font-medium">${card.desc}</p>`}
-                        </div>`;
-                } else if (card.type === 'transport') {
-                    html += `
-                        <div class="card transport-card shadow-sm p-6">
-                            ${isEditMode ? `<input placeholder="圖片網址" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-40 bg-slate-100 bg-cover bg-center rounded-2xl mb-4" style="background-image: url('${card.img}')"></div>`}
-                            <div class="flex items-center gap-2 mb-4"><i class="fas fa-route text-blue-500"></i><span class="text-[11px] font-black text-slate-500 uppercase tracking-widest">Transport Log</span></div>
-                            <div class="space-y-4 mb-5">
-                                ${card.steps.map((s, sIdx) => `
-                                    <div class="step-list-item">
-                                        <p class="text-detail font-bold text-slate-700">${getTransportIcon(s.mode)}${s.mode}: ${s.route}</p>
-                                        <p class="text-[12px] text-slate-400 font-bold ml-8">時間: ${s.time}</p>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'detail', this.value)">${card.detail}</textarea>` : `<div class="bg-blue-50/50 p-4 rounded-xl text-blue-700 italic font-bold text-detail">${card.detail}</div>`}
-                        </div>`;
-                } else if (card.type === 'spot') {
-                    html += `
-                        <div class="card spot-card shadow-xl p-7">
-                            ${isEditMode ? `<input placeholder="圖片網址" value="${card.img}" onchange="updateCardField(${idx}, 'img', this.value)">` : `<div class="h-64 bg-slate-100 bg-cover bg-center rounded-2xl mb-5 shadow-inner" style="background-image: url('${card.img}')"></div>`}
-                            <div class="flex items-center gap-2 mb-3"><i class="fas fa-camera-retro text-orange-400"></i><span class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Spotlight</span></div>
-                            ${isEditMode ? `<input value="${card.name}" onchange="updateCardField(${idx}, 'name', this.value)">` : `<h3 class="text-2xl font-bold text-slate-700 serif">${card.name}</h3>`}
-                            ${isEditMode ? `<textarea onchange="updateCardField(${idx}, 'desc', this.value)">${card.desc}</textarea>` : `<p class="text-detail text-slate-500 mt-4 leading-relaxed font-medium">${card.desc}</p>`}
-                        </div>`;
-                }
-            });
-            container.innerHTML = html;
+                {isTransport ? (
+                  <div className="py-6 pl-10 ml-1 border-l-[6px] border-journal-blue/60 flex items-center gap-5 bg-black/10 rounded-[2.5rem] my-4 shadow-inner border border-white/10">
+                    <div className="w-12 h-12 rounded-full bg-journal-blue/20 flex items-center justify-center text-journal-blue border-2 border-white/40"><TrainFront size={22} strokeWidth={3} /></div>
+                    <div className="flex-1"><p className="text-base font-black text-[#1C1912] leading-tight">{item.title}</p></div>
+                    <button onClick={() => deleteItem('schedules', item.id)} className="p-2 text-red-900/20"><Trash2 size={20} /></button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 py-4">
+                    <div className="flex items-center justify-between px-3">
+                      <div className="flex items-center gap-3"><span className="text-[11px] font-black text-white bg-journal-blue px-4 py-1.5 rounded-full shadow-lg">{item.time}</span>{isReorderMode && <GripVertical size={18} className="text-journal-blue" />}</div>
+                      <button onClick={() => deleteItem('schedules', item.id)} className="text-red-700/20 hover:text-red-600 p-2"><Trash2 size={20} /></button>
+                    </div>
+                    <Card isSelected={isActive} onClick={() => setEditingItem(item)} onLongPress={() => setIsReorderMode(true)} draggable={isReorderMode} onDragStart={() => setDraggedItemIndex(index)}>
+                       <div className={`absolute top-0 right-0 w-4 h-full rounded-r-[2.2rem] ${CATEGORY_COLORS[item.category]}`} />
+                       <div className="flex items-start gap-5">
+                          <div className="flex-1 min-w-0 pr-2">
+                            {item.city && <span className="text-[10px] font-black bg-gray-100 text-gray-500 px-2 py-0.5 rounded uppercase tracking-widest mb-1 inline-block">📍 {item.city}</span>}
+                            <h3 className="text-xl font-black text-[#1C1912] mb-3 flex items-center gap-3 leading-tight">
+                              {item.category === 'hotel' && <Home size={22} className="text-orange-500" strokeWidth={3} />}
+                              {item.category === 'flight' && <Plane size={22} className="text-[#C25E5E]" strokeWidth={3} />}
+                              {item.title}
+                            </h3>
+                            {item.note && <div className="text-[13px] text-[#1C1912] font-bold mb-5 bg-[#F7F4EB] p-4 rounded-[1.5rem] border-2 border-black/5 leading-relaxed italic shadow-inner">“ {item.note} ”</div>}
+                            {item.googleMapUrl && <a href={item.googleMapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-2 text-[11px] bg-journal-blue text-white px-6 py-3 rounded-[1.8rem] font-black shadow-xl active:translate-y-1"><Navigation size={16} strokeWidth={4} /> GO 導航</a>}
+                          </div>
+                          <div className="w-24 h-24 bg-[#F0EEE6] rounded-[2rem] flex flex-col items-center justify-center text-[#A89F82] border-4 border-dashed border-[#CFC8B3] shrink-0 active:bg-white"><CameraIcon size={32} strokeWidth={2.5} className="mb-1" /><span className="text-[9px] font-black uppercase tracking-widest leading-none">Photo</span></div>
+                       </div>
+                    </Card>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
-            if(isEditMode) {
-                document.getElementById('day-title-input').onchange = (e) => {
-                    const day = localData.days.find(d => d.day === currentDay);
-                    day.title = e.target.value;
-                    document.getElementById('save-btn').classList.remove('hidden');
-                };
-            }
-        };
+  const BookingView = () => (
+    <div className="space-y-8 animate-fade-in pb-32 mt-6 px-1">
+      <h2 className="text-3xl font-black text-[#1C1912] px-3 flex items-center gap-3"><Layers size={32} className="text-journal-blue" /> 航班憑證</h2>
+      {/* 去程航班 */}
+      <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border-b-[10px] border-[#AA1D24] mb-6">
+        <div className="bg-[#AA1D24] p-8 text-white flex justify-between items-center font-black">
+          <span className="tracking-widest uppercase">去程 EMIRATES</span>
+          <span className="text-xs">3/18 CONFIRMED</span>
+        </div>
+        <div className="p-8 space-y-6 bg-gray-50/50">
+          <div className="flex justify-between items-center border-b border-dashed border-gray-200 pb-4">
+            <div className="text-center"><p className="text-4xl font-black">TPE</p><p className="text-sm font-bold text-journal-blue">00:20</p></div>
+            <ArrowRight className="text-gray-300" />
+            <div className="text-center"><p className="text-4xl font-black opacity-40">DXB</p><p className="text-sm font-bold">06:10</p></div>
+          </div>
+          <div className="flex justify-between items-center pt-2">
+            <div className="text-center"><p className="text-4xl font-black opacity-40">DXB</p><p className="text-sm font-bold">08:25</p></div>
+            <ArrowRight className="text-gray-300" />
+            <div className="text-center"><p className="text-4xl font-black">ZRH</p><p className="text-sm font-bold text-journal-blue">12:25</p></div>
+          </div>
+        </div>
+      </div>
+      {/* 回程航班 */}
+      <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border-b-[10px] border-[#A7B09E]">
+        <div className="bg-[#1C1912] p-8 text-white flex justify-between items-center font-black">
+          <span className="tracking-widest uppercase">回程 EMIRATES</span>
+          <span className="text-xs">3/30-3/31 CONFIRMED</span>
+        </div>
+        <div className="p-8 space-y-6">
+          <div className="flex justify-between items-center border-b border-dashed border-gray-200 pb-4">
+            <div className="text-center"><p className="text-4xl font-black">ZRH</p><p className="text-sm font-bold text-journal-blue">15:30</p></div>
+            <ArrowRight className="text-gray-300" />
+            <div className="text-center"><p className="text-4xl font-black opacity-40">DXB</p><p className="text-sm font-bold">23:45</p></div>
+          </div>
+          <div className="flex justify-between items-center pt-2">
+            <div className="text-center"><p className="text-4xl font-black opacity-40">DXB</p><p className="text-sm font-bold">03:45</p></div>
+            <ArrowRight className="text-gray-300" />
+            <div className="text-center"><p className="text-4xl font-black">TPE</p><p className="text-sm font-bold text-journal-blue">16:10</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
-        window.updateCardField = (idx, field, val) => {
-            const day = localData.days.find(d => d.day === currentDay);
-            day.cards[idx][field] = val;
-            document.getElementById('save-btn').classList.remove('hidden');
-        };
+  const ExpenseView = ({ expenses, user, exchangeRates, expenseFilter, setExpenseFilter }) => {
+    const filteredExpenses = expenseFilter === 'me' ? expenses.filter(e => e.userId === user?.uid) : expenses;
+    const totalTWD = filteredExpenses.reduce((sum, ex) => sum + (ex.amount * (exchangeRates[ex.currency] || 1)), 0);
 
-        document.getElementById('edit-toggle').onclick = () => {
-            isEditMode = !isEditMode;
-            document.getElementById('edit-toggle').classList.toggle('text-emerald-500');
-            renderContent();
-        };
+    return (
+      <div className="space-y-8 animate-fade-in pb-32">
+        <Card className="bg-gradient-to-br from-[#1C1912] to-[#4A4433] text-white border-none shadow-2xl py-12 px-8">
+           <div className="flex justify-between items-start mb-10"><div className="space-y-2"><p className="text-[12px] font-black uppercase tracking-[0.6em] text-journal-blue">預算估算</p><p className="text-6xl font-black tracking-tighter"><span className="text-2xl opacity-40">NT$</span> {Math.round(totalTWD).toLocaleString()}</p></div><div className="p-6 bg-white/5 rounded-[2.5rem] border border-white/10 shadow-inner"><Wallet size={40} /></div></div>
+           <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-8"><div><p className="text-[10px] font-black uppercase opacity-40">法郎</p><p className="text-xl font-black">1 : {exchangeRates.CHF.toFixed(2)}</p></div><div><p className="text-[10px] font-black uppercase opacity-40">歐元</p><p className="text-xl font-black">1 : {exchangeRates.EUR.toFixed(2)}</p></div></div>
+        </Card>
+        <div className="flex gap-3 p-2 bg-black/20 rounded-[2.8rem] border-2 border-white/5"><button onClick={() => setExpenseFilter('all')} className={`flex-1 py-5 rounded-[2.4rem] text-[13px] font-black ${expenseFilter === 'all' ? 'bg-white text-[#1C1912]' : 'text-white/40'}`}>全團</button><button onClick={() => setExpenseFilter('me')} className={`flex-1 py-5 rounded-[2.4rem] text-[13px] font-black ${expenseFilter === 'me' ? 'bg-white text-[#1C1912]' : 'text-white/40'}`}>個人</button></div>
+        <div className="space-y-6">{filteredExpenses.map(ex => (<Card key={ex.id} className="flex justify-between items-center p-8 bg-white/95 shadow-2xl"><div className="flex items-center gap-7"><div className="w-16 h-16 rounded-[2rem] bg-journal-blue/15 text-journal-blue flex items-center justify-center border-2 border-journal-blue/10">{ex.category?.includes('飲') ? <Utensils size={32} /> : ex.category?.includes('交') ? <TrainFront size={32} /> : <Wallet size={32} />}</div><div><p className="font-black text-2xl text-[#1C1912] leading-none mb-3">{ex.title}</p><span className="text-[11px] font-black bg-journal-blue/10 text-journal-blue px-3 py-1 rounded-lg uppercase">@{ex.userName}</span></div></div><div className="text-right"><p className="text-3xl font-black text-journal-blue">{ex.currency} {ex.amount}</p><p className="text-[12px] font-black text-gray-300">≈ NT$ {Math.round(ex.amount * (exchangeRates[ex.currency] || 1))}</p></div></Card>))}</div>
+      </div>
+    );
+  };
 
-        document.getElementById('save-btn').onclick = async () => {
-            try {
-                const docPath = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
-                await setDoc(docPath, localData);
-                document.getElementById('save-btn').classList.add('hidden');
-                isEditMode = false;
-                renderContent();
-            } catch (e) {
-                console.error("Save Error:", e);
-            }
-        };
+  const PlanningView = ({ todos, toggleTodo, deleteItem, showSuccess }) => (
+    <div className="space-y-8 animate-fade-in pb-32 mt-6 px-2">
+      <h2 className="text-4xl font-black text-[#1C1912] px-2">準備清單</h2>
+      <div className="space-y-5">{todos.map(todo => (<div key={todo.id} className={`p-8 rounded-[3rem] flex items-center gap-6 transition-all border-[5px] ${todo.completed ? 'bg-[#A7B09E]/10 border-[#A7B09E]/20 opacity-60' : 'bg-white shadow-[12px_12px_0px_rgba(0,0,0,0.12)] border-black/5'}`}><div onClick={() => toggleTodo(todo.id, todo.completed)} className="flex-1 flex items-center gap-6 cursor-pointer">{todo.completed ? <div className="w-12 h-12 rounded-[1.5rem] bg-journal-green flex items-center justify-center text-white"><Check size={32} strokeWidth={5} /></div> : <div className="w-12 h-12 rounded-[1.5rem] border-[4px] border-gray-200 bg-gray-50" />}<span className={`text-2xl font-black ${todo.completed ? 'line-through text-gray-400' : 'text-[#1C1912]'}`}>{todo.title}</span></div><button onClick={() => deleteItem('todos', todo.id)} className="p-3 bg-red-50 text-red-300 rounded-2xl hover:text-red-500 transition-colors"><Trash2 size={24} /></button></div>))}</div>
+      {showSuccess && <div className="fixed inset-0 flex items-center justify-center z-[200] animate-in zoom-in"><div className="bg-white rounded-[5rem] p-20 shadow-2xl border-[10px] border-journal-green text-center"><div className="text-[10rem] mb-10">🇨🇭</div><h3 className="text-5xl font-black text-journal-green mb-6">準備完成！</h3></div></div>}
+    </div>
+  );
 
-        const initData = () => {
-            const docPath = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'itinerary', 'master');
-            onSnapshot(docPath, (doc) => {
-                if (doc.exists()) {
-                    localData = doc.data();
-                } else {
-                    localData = defaultTripData;
-                }
-                renderNavBar();
-                renderContent();
-            }, (err) => {
-                console.error("Firestore Error:", err);
-                localData = defaultTripData;
-                renderNavBar();
-                renderContent();
-            });
-        };
+  const MessageBoardView = ({ messages, user, deleteItem }) => (
+    <div className="space-y-8 animate-fade-in pb-32 mt-6 px-1">
+      <h2 className="text-4xl font-black text-[#1C1912] px-2">成員留言板</h2>
+      <div className="grid grid-cols-1 gap-6">{messages.map((msg) => (<div key={msg.id} className="bg-white rounded-[2.5rem] p-8 shadow-2xl border-[3px] border-[#A89F82] relative"><div className="flex justify-between items-start mb-4"><div className="flex items-center gap-3 bg-journal-blue/10 px-4 py-1.5 rounded-full border border-journal-blue/10"><User size={14} className="text-journal-blue" strokeWidth={3} /><span className="text-[12px] font-black text-journal-blue">@{msg.userName}</span></div>{msg.userId === user?.uid && <button onClick={() => deleteItem('messages', msg.id)} className="text-red-900/20 hover:text-red-500"><Trash2 size={20} /></button>}</div><p className="text-2xl font-black text-[#1C1912] leading-relaxed mb-6">“ {msg.text} ”</p><div className="flex justify-end text-[10px] font-black text-[#1C1912]/30 uppercase tracking-widest">{new Date(msg.createdAt).toLocaleString()}</div></div>))}</div>
+    </div>
+  );
 
-        setTimeout(initData, 1000);
-    </script>
-</body>
-</html>
+  return (
+    <div className="min-h-screen bg-[#CFC8B3] bg-[radial-gradient(#1C1912_0.8px,transparent_0.8px)] bg-[length:32px_32px] text-[#1C1912] font-sans pb-10 overflow-x-hidden select-none">
+      <header className="sticky top-0 z-50 bg-[#CFC8B3]/90 backdrop-blur-3xl px-6 py-10 flex justify-between items-center border-b-[3px] border-black/10 shadow-2xl">
+        <div className="flex items-center gap-5"><div className="w-16 h-16 bg-[#1C1912] rounded-[2.2rem] flex items-center justify-center text-[#CFC8B3] shadow-2xl rotate-3 border-4 border-white/10 active:rotate-0 transition-transform"><MapIcon size={36} strokeWidth={3} /></div><div><h1 className="text-4xl font-black tracking-tighter text-[#1C1912]">SWISS 2026</h1><p className="text-[11px] text-journal-blue font-black uppercase tracking-[0.7em] opacity-80">Shared Diary</p></div></div>
+        <button onClick={() => setIsAddingModalOpen(true)} className="bg-journal-green text-white w-18 h-18 rounded-[1.8rem] shadow-2xl flex items-center justify-center active:scale-50 border-[5px] border-white transition-all"><Plus size={44} strokeWidth={5} /></button>
+      </header>
+
+      <main className="px-6 py-8 max-w-lg mx-auto">
+        {!user ? <div className="flex flex-col items-center justify-center py-60"><RefreshCw className="animate-spin text-journal-blue" size={64} /></div> : (
+          <>
+            {activeTab === 'schedule' && <ScheduleView />}
+            {activeTab === 'expense' && <ExpenseView expenses={expenses} user={user} exchangeRates={exchangeRates} expenseFilter={expenseFilter} setExpenseFilter={setExpenseFilter} />}
+            {activeTab === 'planning' && <PlanningView todos={todos} toggleTodo={toggleTodo} deleteItem={deleteItem} showSuccess={showSuccess} />}
+            {activeTab === 'messages' && <MessageBoardView messages={messages} user={user} deleteItem={deleteItem} />}
+            {activeTab === 'booking' && <BookingView />}
+          </>
+        )}
+      </main>
+
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#1C1912]/98 backdrop-blur-3xl px-2 py-6 flex justify-around items-center z-[60] rounded-t-[4rem] shadow-[0_-30px_100px_rgba(0,0,0,0.6)] max-w-lg mx-auto border-t border-white/10">
+        {[
+          { id: 'schedule', icon: Calendar, label: '行程' },
+          { id: 'booking', icon: CreditCard, label: '憑證' },
+          { id: 'expense', icon: Wallet, label: '記帳' },
+          { id: 'planning', icon: CheckSquare, label: '準備' },
+          { id: 'messages', icon: MessageSquare, label: '留言' }
+        ].map(tab => (
+          <button key={tab.id} onClick={() => { setActiveTab(tab.id); setIsReorderMode(false); }} className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === tab.id ? 'text-journal-blue scale-110' : 'text-white/40'}`}>
+            <tab.icon size={22} strokeWidth={activeTab === tab.id ? 4 : 2.5} />
+            <span className="text-[10px] font-black uppercase tracking-widest leading-none">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <Modal isOpen={isAddingModalOpen} onClose={() => setIsAddingModalOpen(false)} title={activeTab === 'schedule' ? '新增行程項目' : activeTab === 'expense' ? '紀錄支出' : activeTab === 'messages' ? '發布成員留言' : '新增準備項目'}>
+        <form onSubmit={handleGlobalAdd} className="space-y-8 pb-4">
+          {activeTab === 'schedule' && (
+            <>
+              <div className="grid grid-cols-2 gap-6"><input name="time" type="time" required className="w-full bg-white border-4 border-gray-100 rounded-[2rem] p-6 font-black outline-none focus:border-journal-blue" /><input name="duration" type="number" placeholder="時程 (min)" className="w-full bg-white border-4 border-gray-100 rounded-[2rem] p-6 font-black outline-none" /></div>
+              <input name="city" placeholder="城市名稱 (例如：蘇黎世)" className="w-full bg-white border-4 border-gray-100 rounded-[2rem] p-6 font-black outline-none focus:border-journal-blue" />
+              <input name="title" required placeholder="行程名稱 / 交通地點" className="w-full bg-white border-4 border-gray-100 rounded-[2rem] p-6 font-black outline-none focus:border-journal-blue" />
+              <div className="grid grid-cols-3 gap-3">{Object.entries({ spot: '景點', transport: '交通', hotel: '住宿' }).map(([k,v]) => (<label key={k} className="cursor-pointer"><input type="radio" name="category" value={k} className="hidden peer" /><div className="peer-checked:bg-journal-blue peer-checked:text-white border-[3px] border-gray-100 bg-white p-4 rounded-[1.5rem] text-center text-[11px] font-black">{v}</div></label>))}</div>
+              <input name="googleMapUrl" type="url" placeholder="Google Map 連結" className="w-full bg-white border-4 border-gray-100 rounded-[2rem] p-6 font-black outline-none text-blue-600 text-xs" />
+              <textarea name="note" placeholder="備註細節..." className="w-full bg-white border-4 border-gray-100 rounded-[2rem] p-6 font-black outline-none shadow-inner" />
+            </>
+          )}
+          {activeTab === 'expense' && (
+            <><input name="title" required placeholder="支出內容" className="w-full bg-white border-[4px] border-gray-100 rounded-[2rem] p-6 font-black outline-none focus:border-journal-blue" /><div className="grid grid-cols-2 gap-5"><input name="amount" type="number" step="0.01" required placeholder="金額" className="w-full bg-white border-[4px] border-gray-100 rounded-[2rem] p-6 font-black outline-none" /><select name="currency" className="w-full bg-white border-[4px] border-gray-100 rounded-[2rem] p-6 font-black outline-none shadow-inner"><option value="CHF">法郎 CHF</option><option value="TWD">台幣 TWD</option><option value="EUR">歐元 EUR</option></select></div><select name="category" className="w-full bg-white border-[4px] border-gray-100 rounded-[2rem] p-6 font-black outline-none"><option>🍴 飲食消費</option><option>🚆 交通支出</option><option>🏨 住宿費用</option><option>🛍️ 購物紀錄</option></select></>
+          )}
+          {activeTab === 'messages' && <textarea name="text" required placeholder="想告訴夥伴什麼？" rows="5" className="w-full bg-white border-[4px] border-gray-100 rounded-[2rem] p-8 font-black text-2xl outline-none focus:border-journal-blue shadow-inner" />}
+          {activeTab === 'planning' && <input name="title" required placeholder="待辦事項..." className="w-full bg-white border-[4px] border-gray-100 rounded-[3rem] p-8 font-black outline-none shadow-2xl" />}
+          <button type="submit" className="w-full bg-[#1C1912] text-white py-8 rounded-[4rem] font-black shadow-2xl active:scale-90 transition-all tracking-[0.6em] text-2xl uppercase border-b-[10px] border-white/10 mt-4">Confirm & Save</button>
+        </form>
+      </Modal>
+
+      <Modal isOpen={isSwapModalOpen} onClose={() => setIsSwapModalOpen(false)} title="行程整天對調">
+        <form onSubmit={swapDays} className="space-y-8">
+           <select name="day1" className="w-full bg-white border-4 border-gray-100 rounded-3xl p-6 font-black outline-none">{SWISS_DAYS.map(d => <option key={d.id} value={d.id}>{d.label} ({d.date})</option>)}</select>
+           <div className="flex justify-center text-journal-blue"><Repeat size={40} className="rotate-90" /></div>
+           <select name="day2" className="w-full bg-white border-4 border-gray-100 rounded-3xl p-6 font-black outline-none">{SWISS_DAYS.map(d => <option key={d.id} value={d.id}>{d.label} ({d.date})</option>)}</select>
+           <button type="submit" className="w-full bg-journal-blue text-white py-8 rounded-[4rem] font-black shadow-2xl active:scale-95 transition-all tracking-[0.5em] text-xl">確認互換</button>
+        </form>
+      </Modal>
+
+      <Modal isOpen={!!editingItem} onClose={() => setEditingItem(null)} title="編輯行程詳情">
+        <form onSubmit={handleUpdateDetail} className="space-y-8">
+           <input name="city" defaultValue={editingItem?.city} placeholder="城市名稱" className="w-full bg-white border-4 border-gray-100 rounded-3xl p-6 font-black outline-none" />
+           <input name="title" defaultValue={editingItem?.title} required className="w-full bg-white border-4 border-gray-100 rounded-3xl p-6 font-black outline-none focus:border-journal-blue" />
+           <input name="googleMapUrl" defaultValue={editingItem?.googleMapUrl} type="url" className="w-full bg-white border-4 border-gray-100 rounded-3xl p-6 font-black outline-none text-blue-600" />
+           <textarea name="note" defaultValue={editingItem?.note} rows="4" className="w-full bg-white border-4 border-gray-100 rounded-3xl p-6 font-black outline-none" />
+           <button type="submit" className="w-full bg-[#1C1912] text-white py-8 rounded-[4rem] font-black shadow-2xl active:scale-95 tracking-[0.6em] text-xl">儲存變更</button>
+        </form>
+      </Modal>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; background-color: #CFC8B3; color: #1C1912; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(25px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      `}</style>
+    </div>
+  );
+}
